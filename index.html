@@ -122,7 +122,6 @@
         </div>
 
         <div id="game-container">
-            <!-- Aumentei a altura de 500 para 600 para criar o "trackpad" -->
             <canvas id="gameCanvas" width="400" height="600"></canvas>
         </div>
     </div>
@@ -139,9 +138,12 @@
 
         let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
         let isDrunk = false, drunkTimer = 0;
-
-        // O limite inferior do jogo é 500 (chão). Do 500 ao 600 é o controle do dedo.
         const groundY = 500; 
+
+        // --- MÚSICA DE FUNDO ---
+        const bgMusic = new Audio("musica.mp3");
+        bgMusic.loop = true;
+        bgMusic.volume = 0.3; // Volume em 30% para não abafar o robô falando
 
         let currentDifficulty = {};
         const configFase = {
@@ -153,7 +155,6 @@
         const gauchoImg = new Image();
         gauchoImg.src = "gaucho.png"; 
 
-        // O Gaúcho fica posicionado logo acima do "chão"
         const gaucho = { x: 170, y: 430, width: 60, height: 60, speed: 7, dx: 0 };
         const items = [];
         const floatingTexts = [];
@@ -294,7 +295,6 @@
                     continue;
                 }
 
-                // Verifica se a fruta passou da linha do chão (500px)
                 if (item.y - item.size > groundY) {
                     if (item.type === "good") {
                         lives -= 1;
@@ -323,6 +323,10 @@
             if (lives <= 0) {
                 gameOver = true;
                 gameRunning = false;
+                
+                // Pausa a música de fundo ao morrer
+                bgMusic.pause();
+                
                 livesEl.innerText = "0";
                 speak("Fim de linha Gaúcho! Te pegaram!");
                 finalScoreEl.innerText = score;
@@ -333,7 +337,6 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Desenhar Foto do Gaúcho
             if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
                 ctx.drawImage(gauchoImg, gaucho.x, gaucho.y, gaucho.width, gaucho.height);
             } else {
@@ -345,32 +348,23 @@
                 ctx.fillText("FOTO", gaucho.x + gaucho.width/2, gaucho.y + gaucho.height/2 - 5);
             }
 
-            // Desenhar Itens Caindo
             ctx.textAlign = "center";
             for (let item of items) {
                 ctx.font = "35px Arial";
                 ctx.fillStyle = "black"; 
                 ctx.fillText(item.emoji, item.x, item.y);
             }
-
-            // --- DESENHAR ZONA DE CONTROLE (NOVO RODAPÉ) ---
             
-            // Fundo escuro do trackpad
             ctx.fillStyle = "#2c3e50"; 
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
             
-            // Linha amarela separando o chão
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(0, groundY, canvas.width, 4);
 
-            // Texto de instrução
             ctx.fillStyle = "#ecf0f1";
             ctx.font = "bold 16px Arial";
             ctx.fillText("👆 ARRASTE O DEDO AQUI 👆", canvas.width / 2, groundY + 55);
 
-            // -----------------------------------------------
-
-            // Textos Flutuantes
             ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             for (let ft of floatingTexts) {
@@ -400,6 +394,10 @@
             gameOverScreen.style.display = "none";
             gameRunning = true;
             gameOver = false;
+            
+            // Inicia a música de fundo
+            bgMusic.currentTime = 0; // Garante que comece do início
+            bgMusic.play().catch(e => console.log("O navegador bloqueou o áudio automático."));
             
             loop();
             let speech = new SpeechSynthesisUtterance("Vai que é sua, Gaúcho!");
