@@ -22,16 +22,20 @@
             display: inline-block;
             width: 100%;
             max-width: 400px; 
+            overflow: hidden; /* Para a notificação falsa não vazar */
+            border-radius: 10px;
         }
         #game-container {
-            background-color: #ecf0f1;
+            background-color: #ecf0f1; /* Cor do Dia */
             border: 6px solid #34495e;
             border-radius: 10px;
             box-shadow: 0px 8px 20px rgba(0,0,0,0.5);
             cursor: none; 
-            transition: filter 0.3s;
+            transition: background-color 1.5s ease, filter 0.3s;
             touch-action: none; 
         }
+        
+        /* Efeito Cachaça */
         @keyframes bebo {
             0% { transform: rotate(0deg); filter: blur(0px); }
             25% { transform: rotate(3deg); filter: blur(1px); }
@@ -43,6 +47,41 @@
             animation: bebo 2s infinite;
             border-color: #8e44ad !important;
         }
+
+        /* Efeito Giroflex da Polícia */
+        @keyframes giroflex-anim {
+            0% { box-shadow: inset 0 0 40px red; }
+            50% { box-shadow: inset 0 0 40px blue; }
+            100% { box-shadow: inset 0 0 40px red; }
+        }
+        .giroflex-effect {
+            animation: giroflex-anim 0.5s infinite !important;
+        }
+
+        /* Notificação Fake de WhatsApp */
+        #fake-notif {
+            position: absolute;
+            top: -100px;
+            left: 5%;
+            width: 90%;
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 12px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 50;
+            pointer-events: none; /* Deixa o toque atravessar para o jogo */
+            box-sizing: border-box;
+            text-align: left;
+        }
+        #fake-notif.show { top: 15px; }
+        #fake-notif .icon { font-size: 28px; }
+        #fake-notif h4 { margin: 0; font-size: 15px; color: #25D366; }
+        #fake-notif p { margin: 2px 0 0 0; font-size: 13px; color: #555; font-weight: bold;}
 
         #stats {
             font-size: 20px;
@@ -58,6 +97,7 @@
             touch-action: none;
         }
 
+        /* Telas de Menu e Game Over */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -67,9 +107,9 @@
             align-items: center;
             flex-direction: column;
             border-radius: 10px;
-            z-index: 10;
+            z-index: 100;
         }
-        #game-over-screen { display: none; z-index: 20; }
+        #game-over-screen { display: none; }
 
         .diff-btn {
             padding: 12px 20px;
@@ -85,13 +125,9 @@
             max-width: 250px;
         }
         .btn-easy { background-color: #2ecc71; }
-        .btn-easy:hover { background-color: #27ae60; }
         .btn-normal { background-color: #f1c40f; color: #333; }
-        .btn-normal:hover { background-color: #f39c12; color: white;}
         .btn-hard { background-color: #e74c3c; }
-        .btn-hard:hover { background-color: #c0392b; }
         .btn-menu { background-color: #3498db; margin-top: 20px;}
-        .btn-menu:hover { background-color: #2980b9; }
         
         .title-start { margin-bottom: 5px; color: #f1c40f; font-size: 22px;}
         .subtitle-start { font-size: 13px; margin-bottom: 20px; color: #bdc3c7; padding: 0 10px;}
@@ -100,12 +136,22 @@
 <body>
 
     <h1>🤠 A Saga do Gaúcho 🏍️</h1>
-    <p>Use a área escura abaixo do Gaúcho para controlá-lo!</p>
+    <p>Arraste na área escura. Cuidado com maridos, polícia e a cachaça!</p>
     <div id="stats">
         Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
     </div>
     
     <div id="game-wrapper">
+        
+        <!-- Notificação de Trollagem -->
+        <div id="fake-notif">
+            <div class="icon">💬</div>
+            <div>
+                <h4 id="notif-name">Esposa 😠</h4>
+                <p id="notif-msg">Onde você tá?? Chega em casa agora!</p>
+            </div>
+        </div>
+
         <div id="start-screen" class="overlay-screen">
             <h2 class="title-start">Pronto pra zoeira?</h2>
             <p class="subtitle-start">Aumente o som! Arraste o dedo na parte de baixo para jogar.</p>
@@ -116,7 +162,7 @@
 
         <div id="game-over-screen" class="overlay-screen">
             <h2 style="color: #e74c3c; font-size: 32px; margin-bottom: 5px;">FIM DE LINHA!</h2>
-            <p style="font-size: 18px; color: #ecf0f1;">O Gaúcho foi pego!</p>
+            <p style="font-size: 18px; color: #ecf0f1;">O Gaúcho rodou!</p>
             <h3 style="color: #f1c40f; font-size: 24px;">Pontuação: <span id="final-score">0</span></h3>
             <button class="diff-btn btn-menu" onclick="resetToMenu()">⬅️ Voltar ao Menu</button>
         </div>
@@ -135,15 +181,26 @@
         const gameOverScreen = document.getElementById("game-over-screen");
         const finalScoreEl = document.getElementById("final-score");
         const gameContainer = document.getElementById("game-container");
+        const fakeNotif = document.getElementById("fake-notif");
 
         let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
         let isDrunk = false, drunkTimer = 0;
         const groundY = 500; 
 
-        // --- MÚSICA DE FUNDO ---
+        // --- SISTEMA DE ÁUDIO ---
         const bgMusic = new Audio("musica.mp3");
         bgMusic.loop = true;
-        bgMusic.volume = 0.3; // Volume em 30% para não abafar o robô falando
+        bgMusic.volume = 0.3; 
+        
+        const sfxMoto = new Audio("moto.mp3");
+        const sfxTapa = new Audio("tapa.mp3");
+        const sfxSirene = new Audio("sirene.mp3");
+        const sfxGlup = new Audio("glup.mp3");
+
+        function playSfx(audioObj) {
+            audioObj.currentTime = 0;
+            audioObj.play().catch(e => console.log("Áudio não encontrado ou bloqueado: " + e));
+        }
 
         let currentDifficulty = {};
         const configFase = {
@@ -158,13 +215,17 @@
         const gaucho = { x: 170, y: 430, width: 60, height: 60, speed: 7, dx: 0 };
         const items = [];
         const floatingTexts = [];
+        const particles = []; // Efeitos visuais (Suco)
         
         const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤']; 
         const badEmojis = ['🧔', '👨', '👮'];       
 
-        const frasesAcerto = ["Aí sim Gaúcho!", "Garanhão!", "Boa!", "Essa é sua!"];
-        const frasesRuins = ["Ih, o marido!", "A polícia!", "Corre Gaúcho!", "Sujou!"];
-        const frasesDeixouCair = ["Vacilão!", "Perdeu a chance!", "Lerdo!"];
+        // Mensagens falsas da trollagem
+        const zapMessages = [
+            { name: "Esposa 😠", msg: "Onde você tá?? Chega em casa agora!" },
+            { name: "Sogrão", msg: "Amanhã tem laje pra bater, não some." },
+            { name: "Amor ❤️", msg: "Você tá no bar de novo???" }
+        ];
 
         function speak(texto) {
             speechSynthesis.cancel(); 
@@ -179,13 +240,52 @@
             floatingTexts.push({ x: x, y: y, text: text, color: color, life: 50 });
         }
 
+        // --- SISTEMA DE PARTÍCULAS (JUICE) ---
+        function createParticles(x, y, type) {
+            let pEmoji = '💖';
+            if (type === 'moto') pEmoji = '💨'; // Fumaça da moto
+            if (type === 'bad') pEmoji = '💥';  // Explosão do tapa
+            if (type === 'cachaca') pEmoji = '✨';
+
+            for (let i = 0; i < 4; i++) {
+                particles.push({
+                    x: x + (Math.random() * 30 - 15),
+                    y: y + (Math.random() * 30 - 15),
+                    vx: (Math.random() * 4 - 2),
+                    vy: (Math.random() * -5 - 2), // Sempre sobem
+                    life: 40,
+                    maxLife: 40,
+                    emoji: pEmoji
+                });
+            }
+        }
+
+        // --- TROLLAGEM DO ZAP ---
+        function triggerFakeNotification() {
+            if (fakeNotif.classList.contains("show")) return;
+            const zap = zapMessages[Math.floor(Math.random() * zapMessages.length)];
+            document.getElementById("notif-name").innerText = zap.name;
+            document.getElementById("notif-msg").innerText = zap.msg;
+            
+            fakeNotif.classList.add("show");
+            // Toca o som do WhatsApp (Voz imitando)
+            speak("Mensagem no Zap!");
+
+            // Some depois de 3 segundos
+            setTimeout(() => {
+                fakeNotif.classList.remove("show");
+            }, 3000);
+        }
+
         function spawnItem() {
             const size = 35; 
             const x = Math.random() * (canvas.width - size * 1.5) + (size / 2);
-            let baseSpeed = (1.8 + (score * 0.02)) * currentDifficulty.velocidade;
+            
+            // Fases (Dia/Noite) aceleram o jogo
+            let phaseMultiplier = 1 + (Math.floor(score / 100) * 0.15); // +15% veloc. a cada 100 pts
+            let baseSpeed = (1.8 + (score * 0.01)) * currentDifficulty.velocidade * phaseMultiplier;
             
             let isCachaca = Math.random() < 0.05;
-
             if (isCachaca) {
                 items.push({ x, y: -40, size, speed: baseSpeed, emoji: '🍺', type: 'cachaca' });
                 return;
@@ -199,6 +299,7 @@
             items.push({ x, y: -40, size, speed, emoji, type });
         }
 
+        // --- CONTROLES ---
         document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowRight") gaucho.dx = gaucho.speed;
             else if (e.key === "ArrowLeft") gaucho.dx = -gaucho.speed;
@@ -210,7 +311,6 @@
         function moveWithPointer(clientX) {
             if (!gameRunning || gameOver) return;
             const rect = canvas.getBoundingClientRect();
-            
             const scaleX = canvas.width / rect.width;
             let pointerX = (clientX - rect.left) * scaleX;
             
@@ -222,39 +322,49 @@
         }
 
         canvas.addEventListener("mousemove", (e) => moveWithPointer(e.clientX));
-        
-        canvas.addEventListener("touchstart", (e) => {
-            e.preventDefault(); 
-            moveWithPointer(e.touches[0].clientX);
-        }, { passive: false });
-
-        canvas.addEventListener("touchmove", (e) => {
-            e.preventDefault(); 
-            moveWithPointer(e.touches[0].clientX);
-        }, { passive: false });
+        canvas.addEventListener("touchstart", (e) => { e.preventDefault(); moveWithPointer(e.touches[0].clientX); }, { passive: false });
+        canvas.addEventListener("touchmove", (e) => { e.preventDefault(); moveWithPointer(e.touches[0].clientX); }, { passive: false });
 
         function update() {
             if (!gameRunning || gameOver) return;
 
-            if (isDrunk) { gaucho.x += -gaucho.dx; } 
-            else { gaucho.x += gaucho.dx; }
+            // Ciclo de Dia/Noite (Atualiza cor de fundo)
+            let phase = Math.floor(score / 100);
+            if (phase === 0) gameContainer.style.backgroundColor = "#ecf0f1"; // Dia
+            else if (phase === 1) gameContainer.style.backgroundColor = "#f39c12"; // Tarde
+            else gameContainer.style.backgroundColor = "#2c3e50"; // Noite
 
+            // Controle
+            if (isDrunk) { gaucho.x += -gaucho.dx; } else { gaucho.x += gaucho.dx; }
             if (gaucho.x < 0) gaucho.x = 0;
             if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
 
+            // Timer Cachaça
             if (isDrunk) {
                 drunkTimer--;
                 if (drunkTimer <= 0) {
                     isDrunk = false;
                     gameContainer.classList.remove('drunk-effect');
                     addText(gaucho.x, gaucho.y - 20, "SÓBRIO!", "#3498db");
-                    speak("Ufa, passou o efeito!");
+                    speak("Passou a cachaça!");
                 }
             }
 
             frameCount++;
             let spawnRate = currentDifficulty === configFase.dificil ? 55 : 70;
             if (frameCount % spawnRate === 0) spawnItem();
+
+            // Chance muito rara de mandar Notificação Troll (aprox. a cada 10-15 segundos)
+            if (Math.random() < 0.002) triggerFakeNotification();
+
+            // Efeito Giroflex
+            let temPolicia = items.some(i => i.emoji === '👮');
+            if (temPolicia && !gameContainer.classList.contains('giroflex-effect')) {
+                gameContainer.classList.add('giroflex-effect');
+                playSfx(sfxSirene);
+            } else if (!temPolicia) {
+                gameContainer.classList.remove('giroflex-effect');
+            }
 
             for (let i = 0; i < items.length; i++) {
                 let item = items[i];
@@ -271,23 +381,27 @@
                     if (item.type === "good") {
                         score += 10;
                         scoreEl.innerText = score;
-                        let msg = frasesAcerto[Math.floor(Math.random() * frasesAcerto.length)];
-                        addText(gaucho.x, gaucho.y, msg, "#2ecc71");
-                        speak(msg);
+                        let particleType = (item.emoji === '🏍️') ? 'moto' : 'good';
+                        createParticles(gaucho.x + gaucho.width/2, gaucho.y, particleType);
+                        
+                        if(item.emoji === '🏍️') playSfx(sfxMoto);
+                        else speak("Boa!");
+                        
                     } 
                     else if (item.type === "cachaca") {
                         isDrunk = true;
                         drunkTimer = 300; 
                         gameContainer.classList.add('drunk-effect');
-                        addText(gaucho.x, gaucho.y, "BATEU A MARVADA!", "#9b59b6");
-                        speak("Eita, bateu a cachaça!");
+                        createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'cachaca');
+                        playSfx(sfxGlup);
+                        speak("Bateu a cachaça!");
                     } 
-                    else { 
+                    else { // Bad
                         lives -= 1;
                         livesEl.innerText = lives;
-                        let msg = frasesRuins[Math.floor(Math.random() * frasesRuins.length)];
-                        addText(gaucho.x, gaucho.y, "DEU RUIM!", "#e74c3c"); 
-                        speak(msg);
+                        createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'bad');
+                        playSfx(sfxTapa);
+                        speak("Deu ruim!");
                     }
                     items.splice(i, 1);
                     i--;
@@ -299,9 +413,8 @@
                     if (item.type === "good") {
                         lives -= 1;
                         livesEl.innerText = lives;
-                        let msg = frasesDeixouCair[Math.floor(Math.random() * frasesDeixouCair.length)];
-                        addText(item.x, groundY - 30, msg, "#f39c12");
-                        speak(msg);
+                        addText(item.x, groundY - 30, "Perdeu!", "#f39c12");
+                        speak("Vacilou!");
                     }
                     items.splice(i, 1);
                     i--;
@@ -309,13 +422,19 @@
                 }
             }
 
+            // Atualiza Textos
             for (let i = 0; i < floatingTexts.length; i++) {
                 floatingTexts[i].y -= 1;
                 floatingTexts[i].life -= 1;
-                if (floatingTexts[i].life <= 0) {
-                    floatingTexts.splice(i, 1);
-                    i--;
-                }
+                if (floatingTexts[i].life <= 0) { floatingTexts.splice(i, 1); i--; }
+            }
+
+            // Atualiza Partículas
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                particles[i].life -= 1;
+                if (particles[i].life <= 0) { particles.splice(i, 1); i--; }
             }
         }
 
@@ -323,9 +442,10 @@
             if (lives <= 0) {
                 gameOver = true;
                 gameRunning = false;
-                
-                // Pausa a música de fundo ao morrer
                 bgMusic.pause();
+                
+                gameContainer.classList.remove('giroflex-effect');
+                fakeNotif.classList.remove("show"); // Tira notificação do caminho
                 
                 livesEl.innerText = "0";
                 speak("Fim de linha Gaúcho! Te pegaram!");
@@ -335,6 +455,7 @@
         }
 
         function draw() {
+            // Limpa com transparência para respeitar o background-color do container (fases do dia)
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
@@ -348,25 +469,33 @@
                 ctx.fillText("FOTO", gaucho.x + gaucho.width/2, gaucho.y + gaucho.height/2 - 5);
             }
 
+            // Desenhar Itens
             ctx.textAlign = "center";
             for (let item of items) {
                 ctx.font = "35px Arial";
                 ctx.fillStyle = "black"; 
                 ctx.fillText(item.emoji, item.x, item.y);
             }
-            
-            ctx.fillStyle = "#2c3e50"; 
+
+            // Desenhar Partículas
+            for (let p of particles) {
+                ctx.font = "20px Arial";
+                ctx.globalAlpha = p.life / p.maxLife; // Fade-out
+                ctx.fillText(p.emoji, p.x, p.y);
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Desenhar Rodapé de Controle
+            ctx.fillStyle = "#1a252f"; // Cor escura fixa pro controle
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-            
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(0, groundY, canvas.width, 4);
-
             ctx.fillStyle = "#ecf0f1";
             ctx.font = "bold 16px Arial";
             ctx.fillText("👆 ARRASTE O DEDO AQUI 👆", canvas.width / 2, groundY + 55);
 
+            // Desenhar Textos
             ctx.font = "bold 20px Arial";
-            ctx.textAlign = "center";
             for (let ft of floatingTexts) {
                 ctx.fillStyle = ft.color;
                 ctx.globalAlpha = ft.life / 50; 
@@ -389,27 +518,27 @@
             livesEl.innerText = lives;
             score = 0;
             scoreEl.innerText = score;
+            gameContainer.style.backgroundColor = "#ecf0f1"; // Reset Dia
             
             startScreen.style.display = "none";
             gameOverScreen.style.display = "none";
             gameRunning = true;
             gameOver = false;
             
-            // Inicia a música de fundo
-            bgMusic.currentTime = 0; // Garante que comece do início
-            bgMusic.play().catch(e => console.log("O navegador bloqueou o áudio automático."));
+            bgMusic.currentTime = 0; 
+            bgMusic.play().catch(e => console.log("Áudio bloqueado"));
             
             loop();
-            let speech = new SpeechSynthesisUtterance("Vai que é sua, Gaúcho!");
-            speech.lang = "pt-BR";
-            speechSynthesis.speak(speech);
+            speak("Valendo, Gaúcho!");
         }
 
         function resetToMenu() {
             items.length = 0;
             floatingTexts.length = 0;
+            particles.length = 0;
             isDrunk = false;
             gameContainer.classList.remove('drunk-effect');
+            gameContainer.classList.remove('giroflex-effect');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             gameOverScreen.style.display = "none";
