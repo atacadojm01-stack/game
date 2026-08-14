@@ -133,7 +133,7 @@
 <body>
 
     <h1>🤠 A Saga do Gaúcho 🏍️</h1>
-    <p>Arraste na área escura. Cuidado com maridos, polícia e as bebidas!</p>
+    <p>Arraste na área escura. Faça sequências para ganhar vida!</p>
     <div id="stats">
         Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
     </div>
@@ -152,9 +152,9 @@
         <div id="start-screen" class="overlay-screen">
             <h2 class="title-start">Pronto pra zoeira?</h2>
             <p class="subtitle-start">Aumente o som! Arraste o dedo na parte de baixo para jogar.</p>
-            <button class="diff-btn btn-easy" onclick="startGame('facil')">🟢 FÁCIL</button>
-            <button class="diff-btn btn-normal" onclick="startGame('normal')">🟡 MÉDIO</button>
-            <button class="diff-btn btn-hard" onclick="startGame('dificil')">🔴 DIFÍCIL</button>
+            <button class="diff-btn btn-easy" onclick="startGame('facil')">FÁCIL</button>
+            <button class="diff-btn btn-normal" onclick="startGame('normal')">MÉDIO</button>
+            <button class="diff-btn btn-hard" onclick="startGame('dificil')">DIFÍCIL</button>
         </div>
 
         <div id="game-over-screen" class="overlay-screen">
@@ -181,12 +181,11 @@
         const fakeNotif = document.getElementById("fake-notif");
 
         let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
-        
-        // Cachaça (Inverte Movimento)
         let isDrunk = false, drunkTimer = 0;
-        // Drink Misturado (Vira a Tela)
         let isFlipped = false, flipTimer = 0;
-        let currentRotation = 0, targetRotation = 0; // Para girar a tela suavemente
+        let currentRotation = 0, targetRotation = 0; 
+        
+        let streak = 0; // Contador de sequência
         
         const groundY = 500; 
 
@@ -199,6 +198,7 @@
         const sfxTapa = new Audio("tapa.mp3");
         const sfxSirene = new Audio("sirene.mp3");
         const sfxGlup = new Audio("glup.mp3");
+        const sfxZap = new Audio("zap.mp3"); // <--- Áudio novo da Notificação!
 
         function playSfx(audioObj) {
             audioObj.currentTime = 0;
@@ -207,9 +207,10 @@
 
         let currentDifficulty = {};
         const configFase = {
-            facil: { vidas: 8, chanceBom: 0.90, velocidade: 0.8 },
-            normal: { vidas: 5, chanceBom: 0.75, velocidade: 1.0 },
-            dificil: { vidas: 2, chanceBom: 0.50, velocidade: 1.3 }
+            // Adicionado limite máximo de vidas (maxVidas)
+            facil: { vidas: 8, maxVidas: 10, chanceBom: 0.90, velocidade: 0.8 },
+            normal: { vidas: 5, maxVidas: 7, chanceBom: 0.75, velocidade: 1.0 },
+            dificil: { vidas: 2, maxVidas: 4, chanceBom: 0.50, velocidade: 1.3 }
         };
 
         const gauchoImg = new Image();
@@ -224,16 +225,22 @@
         const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤', '💰', '💵']; 
         const badEmojis = ['🧔', '👨', '👮'];       
 
-        // --- TROLLAGEM DO CHAPA ---
+        // --- MENSAGENS TROLL ---
         const zapMessages = [
             { name: "Esposa 😠", msg: "Onde você tá?? Chega em casa agora!" },
-            { name: "Patrão", msg: "O caminhão Chegou! Cadê você pra descarregar?" },
+            { name: "Patrão", msg: "O caminhão chegou! Cadê você pra descarregar?" },
             { name: "Amor ❤️", msg: "Você tá no bar de novo???" }
         ];
 
-        // --- LOCUÇÃO ---
-        function speak(texto) {
-            if (speechSynthesis.speaking) return; 
+        // --- ARSENAL DE FRASES VARIADAS ---
+        const frasesAcerto = ["Isso aí!", "Agora sim!", "Boa!", "Aí sim Gaúcho!", "Garanhão!"];
+        const frasesRuins = ["Ahh não moço!", "Tá com patifaria!", "Ih, o marido!", "A polícia!", "Deu ruim!"];
+        const frasesCachaca = ["Essa tava gelada!", "Bebi demais!", "Eita marvada!", "Que viagem é essa?!"];
+
+        function speak(texto, forcar = false) {
+            // Se forcar for true, ele fala de qualquer jeito. Se não, só fala se estiver calado.
+            if (!forcar && speechSynthesis.speaking) return; 
+
             const utterance = new SpeechSynthesisUtterance(texto);
             utterance.lang = "pt-BR";
             utterance.pitch = isDrunk ? 0.7 : 1.3; 
@@ -242,7 +249,7 @@
         }
 
         function addText(x, y, text, color) {
-            floatingTexts.push({ x: x, y: y, text: text, color: color, life: 50 });
+            floatingTexts.push({ x: x, y: y, text: text, color: color, life: 60 });
         }
 
         function createParticles(x, y, type) {
@@ -272,11 +279,31 @@
             document.getElementById("notif-msg").innerText = zap.msg;
             
             fakeNotif.classList.add("show");
-            speak("Mensagem no Zap!");
+            playSfx(sfxZap); // Toca o som de notificação real
 
             setTimeout(() => {
                 fakeNotif.classList.remove("show");
             }, 3500);
+        }
+
+        function addLife() {
+            if (lives < currentDifficulty.maxVidas) {
+                lives++;
+                livesEl.innerText = lives;
+                addText(gaucho.x, gaucho.y - 40, "+1 VIDA!", "#e74c3c");
+            } else {
+                score += 50;
+                scoreEl.innerText = score;
+                addText(gaucho.x, gaucho.y - 40, "+50 PTS!", "#f1c40f");
+            }
+        }
+
+        function checkStreak() {
+            if (streak >= 15) {
+                streak = 0; // Reseta após dar o prêmio
+                addLife();
+                speak("Sequência matadora!", true);
+            }
         }
 
         function spawnItem() {
@@ -286,14 +313,17 @@
             let phaseMultiplier = 1 + (Math.floor(score / 100) * 0.15); 
             let baseSpeed = (1.8 + (score * 0.01)) * currentDifficulty.velocidade * phaseMultiplier;
             
-            // Sorteio das Trollagens (Bebidas)
+            // 2% de chance de vir a Vida Extra (Coração Super Rápido)
+            if (Math.random() < 0.02) {
+                items.push({ x, y: -40, size, speed: baseSpeed * 2.2, emoji: '❤️', type: 'vida' });
+                return;
+            }
+
             let randDrink = Math.random();
             if (randDrink < 0.04) {
-                // 4% Cachaça (Inverte teclado/mouse e embaça)
                 items.push({ x, y: -40, size, speed: baseSpeed, emoji: '🍺', type: 'cachaca' });
                 return;
             } else if (randDrink < 0.08) {
-                // 4% Drink (Gira a tela de ponta cabeça)
                 items.push({ x, y: -40, size, speed: baseSpeed, emoji: '🍹', type: 'flip' });
                 return;
             }
@@ -320,7 +350,6 @@
             const scaleX = canvas.width / rect.width;
             let pointerX = (clientX - rect.left) * scaleX;
             
-            // Cachaça inverte o sentido do toque!
             if (isDrunk) { pointerX = canvas.width - pointerX; }
             
             gaucho.x = pointerX - (gaucho.width / 2);
@@ -344,27 +373,21 @@
             if (gaucho.x < 0) gaucho.x = 0;
             if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
 
-            // Timer Cachaça
             if (isDrunk) {
                 drunkTimer--;
                 if (drunkTimer <= 0) {
                     isDrunk = false;
                     gameContainer.classList.remove('drunk-effect');
-                    let forceSpeak = new SpeechSynthesisUtterance("Passou a cachaça!");
-                    forceSpeak.lang = "pt-BR";
-                    speechSynthesis.speak(forceSpeak);
                 }
             }
 
-            // Timer Drink (Virar Tela)
             if (isFlipped) {
                 flipTimer--;
                 if (flipTimer <= 0) {
                     isFlipped = false;
                 }
             }
-            // Faz a transição do giro suavemente
-            targetRotation = isFlipped ? Math.PI : 0; // Math.PI é 180 graus
+            targetRotation = isFlipped ? Math.PI : 0; 
             currentRotation += (targetRotation - currentRotation) * 0.15; 
 
             frameCount++;
@@ -397,43 +420,52 @@
                         score += 10;
                         scoreEl.innerText = score;
                         
+                        // Incrementa Sequência e checa prêmio
+                        streak++;
+                        checkStreak();
+
                         let particleType = 'good';
                         if (item.emoji === '🏍️') particleType = 'moto';
                         if (item.emoji === '💰' || item.emoji === '💵') particleType = 'dinheiro';
                         
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, particleType);
                         
+                        // Áudio
                         if(item.emoji === '🏍️') playSfx(sfxMoto);
-                        else speak("Boa!");
-                        
+                        else if (item.emoji === '🥤') {
+                            playSfx(sfxGlup);
+                            speak("Essa tava gelada!");
+                        } else {
+                            speak(frasesAcerto[Math.floor(Math.random() * frasesAcerto.length)]);
+                        }
                     } 
+                    else if (item.type === "vida") {
+                        addLife();
+                        createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'good');
+                        speak("Mais uma vida!", true);
+                    }
                     else if (item.type === "cachaca") {
                         isDrunk = true;
                         drunkTimer = 300; 
                         gameContainer.classList.add('drunk-effect');
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'bebida');
                         playSfx(sfxGlup);
-                        speak("Bateu a cachaça!");
+                        speak(frasesCachaca[Math.floor(Math.random() * frasesCachaca.length)], true);
                     } 
                     else if (item.type === "flip") {
-                        // TROLLAGEM NOVA: Gira a tela!
                         isFlipped = true;
-                        flipTimer = 120; // 2 segundos virado
+                        flipTimer = 120; 
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'bebida');
                         playSfx(sfxGlup);
-                        
-                        speechSynthesis.cancel();
-                        let forceSpeak = new SpeechSynthesisUtterance("Que viagem é essa?!");
-                        forceSpeak.lang = "pt-BR";
-                        forceSpeak.pitch = 1.5;
-                        speechSynthesis.speak(forceSpeak);
+                        speak("Que viagem é essa?!", true);
                     }
-                    else { 
+                    else { // Ruim (Marido / Polícia)
+                        streak = 0; // Perde a sequência!
                         lives -= 1;
                         livesEl.innerText = lives;
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'bad');
                         playSfx(sfxTapa);
-                        speak("Deu ruim!");
+                        speak(frasesRuins[Math.floor(Math.random() * frasesRuins.length)], true);
                     }
                     items.splice(i, 1);
                     i--;
@@ -441,8 +473,11 @@
                     continue;
                 }
 
-                // Sem punição para coisas boas
+                // Quando coisa boa cai no chão
                 if (item.y - item.size > groundY) {
+                    if (item.type === "good") {
+                        streak = 0; // Perde a sequência se deixar cair!
+                    }
                     items.splice(i, 1);
                     i--;
                 }
@@ -486,22 +521,18 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // === SALVA O CONTEXTO PARA A TELA GIRATÓRIA ===
             ctx.save();
 
-            // Evita que as coisas do jogo desenhem em cima do controle do dedo
             ctx.beginPath();
             ctx.rect(0, 0, canvas.width, groundY);
             ctx.clip();
 
-            // Aplica a rotação se a bebida bater!
             if (Math.abs(currentRotation) > 0.01) {
                 ctx.translate(canvas.width / 2, groundY / 2);
                 ctx.rotate(currentRotation);
                 ctx.translate(-canvas.width / 2, -groundY / 2);
             }
 
-            // --- DESENHO DOS ELEMENTOS DO JOGO ---
             if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
                 ctx.drawImage(gauchoImg, gaucho.x, gaucho.y, gaucho.width, gaucho.height);
             } else {
@@ -530,15 +561,13 @@
             ctx.font = "bold 20px Arial";
             for (let ft of floatingTexts) {
                 ctx.fillStyle = ft.color;
-                ctx.globalAlpha = ft.life / 50; 
+                ctx.globalAlpha = ft.life / 60; 
                 ctx.fillText(ft.text, ft.x + gaucho.width/2, ft.y);
                 ctx.globalAlpha = 1.0;
             }
 
-            // === RESTAURA O CONTEXTO (Desfaz o giro) ===
             ctx.restore();
 
-            // --- DESENHO DA ZONA DE CONTROLE (Que não gira!) ---
             ctx.fillStyle = "#1a252f"; 
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
             ctx.fillStyle = "#f1c40f";
@@ -562,6 +591,7 @@
             livesEl.innerText = lives;
             score = 0;
             scoreEl.innerText = score;
+            streak = 0; // Zera a sequência no começo
             gameContainer.style.backgroundColor = "#ecf0f1"; 
             
             startScreen.style.display = "none";
@@ -587,6 +617,7 @@
             isDrunk = false;
             isFlipped = false;
             currentRotation = 0;
+            streak = 0;
             gameContainer.classList.remove('drunk-effect');
             gameContainer.classList.remove('giroflex-effect');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
