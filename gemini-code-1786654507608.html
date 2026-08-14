@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Saga do Gaúcho</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #2c3e50;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        p { margin-top: 0; font-size: 14px; color: #bdc3c7; }
+        #game-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        #game-container {
+            background-color: #ecf0f1;
+            border: 6px solid #34495e;
+            border-radius: 10px;
+            box-shadow: 0px 8px 20px rgba(0,0,0,0.5);
+            cursor: none; 
+            transition: filter 0.3s;
+        }
+        /* Efeito visual da cachaça */
+        @keyframes bebo {
+            0% { transform: rotate(0deg); filter: blur(0px); }
+            25% { transform: rotate(3deg); filter: blur(1px); }
+            50% { transform: rotate(-3deg); filter: blur(2px); }
+            75% { transform: rotate(2deg); filter: blur(1px); }
+            100% { transform: rotate(0deg); filter: blur(0px); }
+        }
+        .drunk-effect {
+            animation: bebo 2s infinite;
+            border-color: #8e44ad !important;
+        }
+
+        #stats {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ecf0f1;
+        }
+        canvas {
+            display: block;
+            border-radius: 5px;
+        }
+
+        /* Telas de Overlay (Menu e Game Over) */
+        .overlay-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        #game-over-screen {
+            display: none; /* Escondido por padrão */
+            z-index: 20;
+        }
+
+        .diff-btn {
+            padding: 12px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin: 8px;
+            width: 200px;
+        }
+        .btn-easy { background-color: #2ecc71; }
+        .btn-easy:hover { background-color: #27ae60; }
+        .btn-normal { background-color: #f1c40f; color: #333; }
+        .btn-normal:hover { background-color: #f39c12; color: white;}
+        .btn-hard { background-color: #e74c3c; }
+        .btn-hard:hover { background-color: #c0392b; }
+        .btn-menu { background-color: #3498db; margin-top: 20px;}
+        .btn-menu:hover { background-color: #2980b9; }
+        
+        .title-start { margin-bottom: 5px; color: #f1c40f; }
+        .subtitle-start { font-size: 14px; margin-bottom: 20px; color: #bdc3c7;}
+    </style>
+</head>
+<body>
+
+    <h1>🤠 A Saga do Gaúcho 🏍️</h1>
+    <p>Pegue as motos e moças. DESVIE DA POLÍCIA E MARIDOS. Cuidado com a cachaça!</p>
+    <div id="stats">
+        Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
+    </div>
+    
+    <div id="game-wrapper">
+        <!-- Tela de Início -->
+        <div id="start-screen" class="overlay-screen">
+            <h2 class="title-start">Pronto pra zoeira?</h2>
+            <p class="subtitle-start">Ligue o som! Use o teclado ou o MOUSE.</p>
+            <button class="diff-btn btn-easy" onclick="startGame('facil')">🟢 Fácil (5 Vidas)</button>
+            <button class="diff-btn btn-normal" onclick="startGame('normal')">🟡 Normal (3 Vidas)</button>
+            <button class="diff-btn btn-hard" onclick="startGame('dificil')">🔴 Difícil (1 Vida!)</button>
+        </div>
+
+        <!-- Tela de Game Over -->
+        <div id="game-over-screen" class="overlay-screen">
+            <h2 style="color: #e74c3c; font-size: 36px; margin-bottom: 5px;">FIM DE LINHA!</h2>
+            <p style="font-size: 20px; color: #ecf0f1;">O Gaúcho foi pego!</p>
+            <h3 style="color: #f1c40f; font-size: 28px;">Pontuação: <span id="final-score">0</span></h3>
+            <button class="diff-btn btn-menu" onclick="resetToMenu()">⬅️ Voltar ao Menu</button>
+        </div>
+
+        <div id="game-container">
+            <canvas id="gameCanvas" width="400" height="500"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const livesEl = document.getElementById("lives");
+        const startScreen = document.getElementById("start-screen");
+        const gameOverScreen = document.getElementById("game-over-screen");
+        const finalScoreEl = document.getElementById("final-score");
+        const gameContainer = document.getElementById("game-container");
+
+        // Variáveis do Jogo
+        let score = 0;
+        let lives = 0;
+        let gameOver = false;
+        let gameRunning = false;
+        let animationId;
+        let frameCount = 0;
+
+        // Efeito Cachaça
+        let isDrunk = false;
+        let drunkTimer = 0;
+
+        // Configurações de Dificuldade
+        let currentDifficulty = {};
+        const configFase = {
+            facil: { vidas: 5, chanceBom: 0.90, velocidade: 0.8 },
+            normal: { vidas: 3, chanceBom: 0.75, velocidade: 1.0 },
+            dificil: { vidas: 1, chanceBom: 0.50, velocidade: 1.3 }
+        };
+
+        // Imagem do Gaúcho
+        const gauchoImg = new Image();
+        gauchoImg.src = "gaucho.png"; 
+
+        const gaucho = { x: 170, y: 430, width: 60, height: 60, speed: 7, dx: 0 };
+        const items = [];
+        const floatingTexts = [];
+        
+        // Emojis
+        const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤']; 
+        const badEmojis = ['🧔', '👨', '👮'];       
+
+        // Frases para o Robô falar
+        const frasesAcerto = ["Aí sim Gaúcho!", "Garanhão!", "Boa!", "Essa é sua!"];
+        const frasesRuins = ["Ih, o marido!", "A polícia!", "Corre Gaúcho!", "Sujou!"];
+        const frasesDeixouCair = ["Vacilão!", "Perdeu a chance!", "Lerdo!"];
+
+        function speak(texto) {
+            speechSynthesis.cancel(); 
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = "pt-BR";
+            utterance.pitch = isDrunk ? 0.7 : 1.3; // Voz fica grossa/estranha se estiver bêbado
+            utterance.rate = isDrunk ? 0.8 : 1.2; 
+            speechSynthesis.speak(utterance);
+        }
+
+        function addText(x, y, text, color) {
+            floatingTexts.push({ x: x, y: y, text: text, color: color, life: 50 });
+        }
+
+        function spawnItem() {
+            const size = 35; 
+            const x = Math.random() * (canvas.width - size * 1.5) + (size / 2);
+            let baseSpeed = (1.8 + (score * 0.02)) * currentDifficulty.velocidade;
+            
+            // 5% de chance de vir Cachaça
+            let isCachaca = Math.random() < 0.05;
+
+            if (isCachaca) {
+                items.push({ x, y: -40, size, speed: baseSpeed, emoji: '🍺', type: 'cachaca' });
+                return;
+            }
+
+            const isGood = Math.random() < currentDifficulty.chanceBom; 
+            let speed = isGood ? baseSpeed : baseSpeed + 0.5; 
+            let emoji = isGood ? goodEmojis[Math.floor(Math.random() * goodEmojis.length)] : badEmojis[Math.floor(Math.random() * badEmojis.length)];
+            let type = isGood ? "good" : "bad";
+            
+            items.push({ x, y: -40, size, speed, emoji, type });
+        }
+
+        // --- CONTROLES DE TECLADO ---
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight") gaucho.dx = gaucho.speed;
+            else if (e.key === "ArrowLeft") gaucho.dx = -gaucho.speed;
+        });
+
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") gaucho.dx = 0;
+        });
+
+        // --- CONTROLES DE MOUSE ---
+        function moveWithMouse(e) {
+            if (!gameRunning || gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            let mouseX = e.clientX - rect.left;
+            
+            // INVERSÃO DA CACHAÇA (MOUSE)
+            if (isDrunk) {
+                mouseX = canvas.width - mouseX;
+            }
+            
+            gaucho.x = mouseX - (gaucho.width / 2);
+            
+            if (gaucho.x < 0) gaucho.x = 0;
+            if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
+        }
+
+        canvas.addEventListener("mousemove", moveWithMouse);
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault(); 
+            moveWithMouse(e.touches[0]);
+        }, { passive: false });
+
+        // --- LÓGICA DO JOGO ---
+        function update() {
+            if (!gameRunning || gameOver) return;
+
+            // INVERSÃO DA CACHAÇA (TECLADO)
+            if (isDrunk) {
+                gaucho.x += -gaucho.dx;
+            } else {
+                gaucho.x += gaucho.dx;
+            }
+
+            // Limites da tela
+            if (gaucho.x < 0) gaucho.x = 0;
+            if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
+
+            // Timer da Cachaça
+            if (isDrunk) {
+                drunkTimer--;
+                if (drunkTimer <= 0) {
+                    isDrunk = false;
+                    gameContainer.classList.remove('drunk-effect');
+                    addText(gaucho.x, gaucho.y - 20, "SÓBRIO!", "#3498db");
+                    speak("Ufa, passou o efeito!");
+                }
+            }
+
+            frameCount++;
+            let spawnRate = currentDifficulty === configFase.dificil ? 55 : 70;
+            if (frameCount % spawnRate === 0) spawnItem();
+
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.y += item.speed;
+
+                let hitGaucho = (
+                    item.y + (item.size / 3) > gaucho.y && 
+                    item.y - (item.size / 2) < gaucho.y + gaucho.height && 
+                    item.x > gaucho.x - (item.size / 2) && 
+                    item.x < gaucho.x + gaucho.width + (item.size / 2)
+                );
+
+                if (hitGaucho) {
+                    if (item.type === "good") {
+                        score += 10;
+                        scoreEl.innerText = score;
+                        let msg = frasesAcerto[Math.floor(Math.random() * frasesAcerto.length)];
+                        addText(gaucho.x, gaucho.y, msg, "#2ecc71");
+                        speak(msg);
+                    } 
+                    else if (item.type === "cachaca") {
+                        // Ativa o Efeito Cachaça!
+                        isDrunk = true;
+                        drunkTimer = 300; // Aprox 5 segundos a 60fps
+                        gameContainer.classList.add('drunk-effect');
+                        addText(gaucho.x, gaucho.y, "BATEU A MARVADA!", "#9b59b6");
+                        speak("Eita, bateu a cachaça!");
+                    } 
+                    else { // Ruim
+                        lives -= 1;
+                        livesEl.innerText = lives;
+                        let msg = frasesRuins[Math.floor(Math.random() * frasesRuins.length)];
+                        addText(gaucho.x, gaucho.y, "DEU RUIM!", "#e74c3c"); 
+                        speak(msg);
+                    }
+                    items.splice(i, 1);
+                    i--;
+                    checkGameOver();
+                    continue;
+                }
+
+                if (item.y - item.size > canvas.height) {
+                    // Não pune por deixar cachaça cair
+                    if (item.type === "good") {
+                        lives -= 1;
+                        livesEl.innerText = lives;
+                        let msg = frasesDeixouCair[Math.floor(Math.random() * frasesDeixouCair.length)];
+                        addText(item.x, canvas.height - 30, msg, "#f39c12");
+                        speak(msg);
+                    }
+                    items.splice(i, 1);
+                    i--;
+                    checkGameOver();
+                }
+            }
+
+            for (let i = 0; i < floatingTexts.length; i++) {
+                floatingTexts[i].y -= 1;
+                floatingTexts[i].life -= 1;
+                if (floatingTexts[i].life <= 0) {
+                    floatingTexts.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function checkGameOver() {
+            if (lives <= 0) {
+                gameOver = true;
+                gameRunning = false;
+                livesEl.innerText = "0";
+                speak("Fim de linha Gaúcho! Te pegaram!");
+                
+                // Exibe a tela de Fim de Jogo
+                finalScoreEl.innerText = score;
+                gameOverScreen.style.display = "flex";
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenhar Imagem
+            if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
+                ctx.drawImage(gauchoImg, gaucho.x, gaucho.y, gaucho.width, gaucho.height);
+            } else {
+                ctx.fillStyle = "#34495e";
+                ctx.fillRect(gaucho.x, gaucho.y, gaucho.width, gaucho.height);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("FOTO", gaucho.x + gaucho.width/2, gaucho.y + gaucho.height/2 - 5);
+            }
+
+            // Desenhar Itens
+            ctx.textAlign = "center";
+            for (let item of items) {
+                ctx.font = "35px Arial";
+                ctx.fillStyle = "black"; 
+                ctx.fillText(item.emoji, item.x, item.y);
+            }
+
+            // Textos Flutuantes
+            ctx.font = "bold 20px Arial";
+            ctx.textAlign = "center";
+            for (let ft of floatingTexts) {
+                ctx.fillStyle = ft.color;
+                ctx.globalAlpha = ft.life / 50; 
+                ctx.fillText(ft.text, ft.x + gaucho.width/2, ft.y);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (!gameOver && gameRunning) {
+                animationId = requestAnimationFrame(loop);
+            }
+        }
+
+        // --- SISTEMA DE INÍCIO E RESET ---
+        function startGame(dificuldade) {
+            currentDifficulty = configFase[dificuldade];
+            lives = currentDifficulty.vidas;
+            livesEl.innerText = lives;
+            score = 0;
+            scoreEl.innerText = score;
+            
+            startScreen.style.display = "none";
+            gameOverScreen.style.display = "none";
+            gameRunning = true;
+            gameOver = false;
+            
+            loop();
+            let speech = new SpeechSynthesisUtterance("Vai que é sua, Gaúcho!");
+            speech.lang = "pt-BR";
+            speechSynthesis.speak(speech);
+        }
+
+        function resetToMenu() {
+            // Limpa as variáveis para começar do zero
+            items.length = 0;
+            floatingTexts.length = 0;
+            isDrunk = false;
+            gameContainer.classList.remove('drunk-effect');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Alterna as telas
+            gameOverScreen.style.display = "none";
+            startScreen.style.display = "flex";
+        }
+    </script>
+</body>
+</html>
