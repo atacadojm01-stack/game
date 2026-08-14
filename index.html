@@ -2,7 +2,6 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- Meta tag essencial para travar o zoom automático no celular -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>A Saga do Gaúcho</title>
     <style>
@@ -13,7 +12,6 @@
             color: white;
             margin: 0;
             padding: 10px;
-            /* Evita scroll acidental no mobile */
             overflow-x: hidden; 
         }
         h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 24px; margin-top: 5px;}
@@ -23,7 +21,7 @@
             position: relative;
             display: inline-block;
             width: 100%;
-            max-width: 400px; /* Mantém o limite no PC, mas encolhe no celular */
+            max-width: 400px; 
         }
         #game-container {
             background-color: #ecf0f1;
@@ -32,10 +30,8 @@
             box-shadow: 0px 8px 20px rgba(0,0,0,0.5);
             cursor: none; 
             transition: filter 0.3s;
-            /* Impede dar zoom ou arrastar a tela sem querer enquanto joga */
             touch-action: none; 
         }
-        /* Efeito visual da cachaça */
         @keyframes bebo {
             0% { transform: rotate(0deg); filter: blur(0px); }
             25% { transform: rotate(3deg); filter: blur(1px); }
@@ -56,13 +52,12 @@
         }
         canvas {
             display: block;
-            width: 100%; /* Adapta à largura do container responsivo */
-            height: auto; /* Mantém a proporção */
+            width: 100%; 
+            height: auto; 
             border-radius: 5px;
             touch-action: none;
         }
 
-        /* Telas de Overlay (Menu e Game Over) */
         .overlay-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -86,7 +81,7 @@
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             margin: 6px;
-            width: 80%; /* Melhor ajuste no celular */
+            width: 80%; 
             max-width: 250px;
         }
         .btn-easy { background-color: #2ecc71; }
@@ -105,7 +100,7 @@
 <body>
 
     <h1>🤠 A Saga do Gaúcho 🏍️</h1>
-    <p>Deslize o dedo para mover! Cuidado com os maridos e com a marvada 🍺!</p>
+    <p>Use a área escura abaixo do Gaúcho para controlá-lo!</p>
     <div id="stats">
         Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
     </div>
@@ -113,7 +108,7 @@
     <div id="game-wrapper">
         <div id="start-screen" class="overlay-screen">
             <h2 class="title-start">Pronto pra zoeira?</h2>
-            <p class="subtitle-start">Aumente o som! Use o dedo ou o mouse para jogar.</p>
+            <p class="subtitle-start">Aumente o som! Arraste o dedo na parte de baixo para jogar.</p>
             <button class="diff-btn btn-easy" onclick="startGame('facil')">🟢 Fácil (5 Vidas)</button>
             <button class="diff-btn btn-normal" onclick="startGame('normal')">🟡 Normal (3 Vidas)</button>
             <button class="diff-btn btn-hard" onclick="startGame('dificil')">🔴 Difícil (1 Vida!)</button>
@@ -127,8 +122,8 @@
         </div>
 
         <div id="game-container">
-            <!-- A resolução interna do jogo continua 400x500, o CSS encolhe visualmente -->
-            <canvas id="gameCanvas" width="400" height="500"></canvas>
+            <!-- Aumentei a altura de 500 para 600 para criar o "trackpad" -->
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
         </div>
     </div>
 
@@ -145,6 +140,9 @@
         let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
         let isDrunk = false, drunkTimer = 0;
 
+        // O limite inferior do jogo é 500 (chão). Do 500 ao 600 é o controle do dedo.
+        const groundY = 500; 
+
         let currentDifficulty = {};
         const configFase = {
             facil: { vidas: 5, chanceBom: 0.90, velocidade: 0.8 },
@@ -155,6 +153,7 @@
         const gauchoImg = new Image();
         gauchoImg.src = "gaucho.png"; 
 
+        // O Gaúcho fica posicionado logo acima do "chão"
         const gaucho = { x: 170, y: 430, width: 60, height: 60, speed: 7, dx: 0 };
         const items = [];
         const floatingTexts = [];
@@ -199,7 +198,6 @@
             items.push({ x, y: -40, size, speed, emoji, type });
         }
 
-        // TECLADO (Ainda funciona se ele abrir no PC)
         document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowRight") gaucho.dx = gaucho.speed;
             else if (e.key === "ArrowLeft") gaucho.dx = -gaucho.speed;
@@ -208,12 +206,10 @@
             if (e.key === "ArrowRight" || e.key === "ArrowLeft") gaucho.dx = 0;
         });
 
-        // OTIMIZAÇÃO MOUSE E TOUCH (CELULAR)
         function moveWithPointer(clientX) {
             if (!gameRunning || gameOver) return;
             const rect = canvas.getBoundingClientRect();
             
-            // Calcula a proporção exata para funcionar mesmo se o CSS encolher a tela
             const scaleX = canvas.width / rect.width;
             let pointerX = (clientX - rect.left) * scaleX;
             
@@ -226,13 +222,11 @@
 
         canvas.addEventListener("mousemove", (e) => moveWithPointer(e.clientX));
         
-        // touchstart: Pula para o dedo assim que encosta na tela
         canvas.addEventListener("touchstart", (e) => {
             e.preventDefault(); 
             moveWithPointer(e.touches[0].clientX);
         }, { passive: false });
 
-        // touchmove: Arrasta o boneco acompanhando o dedo
         canvas.addEventListener("touchmove", (e) => {
             e.preventDefault(); 
             moveWithPointer(e.touches[0].clientX);
@@ -300,12 +294,13 @@
                     continue;
                 }
 
-                if (item.y - item.size > canvas.height) {
+                // Verifica se a fruta passou da linha do chão (500px)
+                if (item.y - item.size > groundY) {
                     if (item.type === "good") {
                         lives -= 1;
                         livesEl.innerText = lives;
                         let msg = frasesDeixouCair[Math.floor(Math.random() * frasesDeixouCair.length)];
-                        addText(item.x, canvas.height - 30, msg, "#f39c12");
+                        addText(item.x, groundY - 30, msg, "#f39c12");
                         speak(msg);
                     }
                     items.splice(i, 1);
@@ -338,6 +333,7 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Desenhar Foto do Gaúcho
             if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
                 ctx.drawImage(gauchoImg, gaucho.x, gaucho.y, gaucho.width, gaucho.height);
             } else {
@@ -349,6 +345,7 @@
                 ctx.fillText("FOTO", gaucho.x + gaucho.width/2, gaucho.y + gaucho.height/2 - 5);
             }
 
+            // Desenhar Itens Caindo
             ctx.textAlign = "center";
             for (let item of items) {
                 ctx.font = "35px Arial";
@@ -356,6 +353,24 @@
                 ctx.fillText(item.emoji, item.x, item.y);
             }
 
+            // --- DESENHAR ZONA DE CONTROLE (NOVO RODAPÉ) ---
+            
+            // Fundo escuro do trackpad
+            ctx.fillStyle = "#2c3e50"; 
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            
+            // Linha amarela separando o chão
+            ctx.fillStyle = "#f1c40f";
+            ctx.fillRect(0, groundY, canvas.width, 4);
+
+            // Texto de instrução
+            ctx.fillStyle = "#ecf0f1";
+            ctx.font = "bold 16px Arial";
+            ctx.fillText("👆 ARRASTE O DEDO AQUI 👆", canvas.width / 2, groundY + 55);
+
+            // -----------------------------------------------
+
+            // Textos Flutuantes
             ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             for (let ft of floatingTexts) {
