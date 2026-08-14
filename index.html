@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta tag essencial para travar o zoom automático no celular -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>A Saga do Gaúcho</title>
     <style>
         body {
@@ -11,13 +12,18 @@
             background-color: #2c3e50;
             color: white;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            /* Evita scroll acidental no mobile */
+            overflow-x: hidden; 
         }
-        h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        p { margin-top: 0; font-size: 14px; color: #bdc3c7; }
+        h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 24px; margin-top: 5px;}
+        p { margin-top: 0; font-size: 13px; color: #bdc3c7; }
+        
         #game-wrapper {
             position: relative;
             display: inline-block;
+            width: 100%;
+            max-width: 400px; /* Mantém o limite no PC, mas encolhe no celular */
         }
         #game-container {
             background-color: #ecf0f1;
@@ -26,6 +32,8 @@
             box-shadow: 0px 8px 20px rgba(0,0,0,0.5);
             cursor: none; 
             transition: filter 0.3s;
+            /* Impede dar zoom ou arrastar a tela sem querer enquanto joga */
+            touch-action: none; 
         }
         /* Efeito visual da cachaça */
         @keyframes bebo {
@@ -41,14 +49,17 @@
         }
 
         #stats {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #ecf0f1;
         }
         canvas {
             display: block;
+            width: 100%; /* Adapta à largura do container responsivo */
+            height: auto; /* Mantém a proporção */
             border-radius: 5px;
+            touch-action: none;
         }
 
         /* Telas de Overlay (Menu e Game Over) */
@@ -63,22 +74,20 @@
             border-radius: 10px;
             z-index: 10;
         }
-        #game-over-screen {
-            display: none; /* Escondido por padrão */
-            z-index: 20;
-        }
+        #game-over-screen { display: none; z-index: 20; }
 
         .diff-btn {
-            padding: 12px 25px;
-            font-size: 18px;
+            padding: 12px 20px;
+            font-size: 16px;
             font-weight: bold;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            margin: 8px;
-            width: 200px;
+            margin: 6px;
+            width: 80%; /* Melhor ajuste no celular */
+            max-width: 250px;
         }
         .btn-easy { background-color: #2ecc71; }
         .btn-easy:hover { background-color: #27ae60; }
@@ -89,37 +98,36 @@
         .btn-menu { background-color: #3498db; margin-top: 20px;}
         .btn-menu:hover { background-color: #2980b9; }
         
-        .title-start { margin-bottom: 5px; color: #f1c40f; }
-        .subtitle-start { font-size: 14px; margin-bottom: 20px; color: #bdc3c7;}
+        .title-start { margin-bottom: 5px; color: #f1c40f; font-size: 22px;}
+        .subtitle-start { font-size: 13px; margin-bottom: 20px; color: #bdc3c7; padding: 0 10px;}
     </style>
 </head>
 <body>
 
     <h1>🤠 A Saga do Gaúcho 🏍️</h1>
-    <p>Pegue as motos e moças. DESVIE DA POLÍCIA E MARIDOS. Cuidado com a cachaça!</p>
+    <p>Deslize o dedo para mover! Cuidado com os maridos e com a marvada 🍺!</p>
     <div id="stats">
         Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
     </div>
     
     <div id="game-wrapper">
-        <!-- Tela de Início -->
         <div id="start-screen" class="overlay-screen">
             <h2 class="title-start">Pronto pra zoeira?</h2>
-            <p class="subtitle-start">Ligue o som! Use o teclado ou o MOUSE.</p>
+            <p class="subtitle-start">Aumente o som! Use o dedo ou o mouse para jogar.</p>
             <button class="diff-btn btn-easy" onclick="startGame('facil')">🟢 Fácil (5 Vidas)</button>
             <button class="diff-btn btn-normal" onclick="startGame('normal')">🟡 Normal (3 Vidas)</button>
             <button class="diff-btn btn-hard" onclick="startGame('dificil')">🔴 Difícil (1 Vida!)</button>
         </div>
 
-        <!-- Tela de Game Over -->
         <div id="game-over-screen" class="overlay-screen">
-            <h2 style="color: #e74c3c; font-size: 36px; margin-bottom: 5px;">FIM DE LINHA!</h2>
-            <p style="font-size: 20px; color: #ecf0f1;">O Gaúcho foi pego!</p>
-            <h3 style="color: #f1c40f; font-size: 28px;">Pontuação: <span id="final-score">0</span></h3>
+            <h2 style="color: #e74c3c; font-size: 32px; margin-bottom: 5px;">FIM DE LINHA!</h2>
+            <p style="font-size: 18px; color: #ecf0f1;">O Gaúcho foi pego!</p>
+            <h3 style="color: #f1c40f; font-size: 24px;">Pontuação: <span id="final-score">0</span></h3>
             <button class="diff-btn btn-menu" onclick="resetToMenu()">⬅️ Voltar ao Menu</button>
         </div>
 
         <div id="game-container">
+            <!-- A resolução interna do jogo continua 400x500, o CSS encolhe visualmente -->
             <canvas id="gameCanvas" width="400" height="500"></canvas>
         </div>
     </div>
@@ -134,19 +142,9 @@
         const finalScoreEl = document.getElementById("final-score");
         const gameContainer = document.getElementById("game-container");
 
-        // Variáveis do Jogo
-        let score = 0;
-        let lives = 0;
-        let gameOver = false;
-        let gameRunning = false;
-        let animationId;
-        let frameCount = 0;
+        let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
+        let isDrunk = false, drunkTimer = 0;
 
-        // Efeito Cachaça
-        let isDrunk = false;
-        let drunkTimer = 0;
-
-        // Configurações de Dificuldade
         let currentDifficulty = {};
         const configFase = {
             facil: { vidas: 5, chanceBom: 0.90, velocidade: 0.8 },
@@ -154,7 +152,6 @@
             dificil: { vidas: 1, chanceBom: 0.50, velocidade: 1.3 }
         };
 
-        // Imagem do Gaúcho
         const gauchoImg = new Image();
         gauchoImg.src = "gaucho.png"; 
 
@@ -162,11 +159,9 @@
         const items = [];
         const floatingTexts = [];
         
-        // Emojis
         const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤']; 
         const badEmojis = ['🧔', '👨', '👮'];       
 
-        // Frases para o Robô falar
         const frasesAcerto = ["Aí sim Gaúcho!", "Garanhão!", "Boa!", "Essa é sua!"];
         const frasesRuins = ["Ih, o marido!", "A polícia!", "Corre Gaúcho!", "Sujou!"];
         const frasesDeixouCair = ["Vacilão!", "Perdeu a chance!", "Lerdo!"];
@@ -175,7 +170,7 @@
             speechSynthesis.cancel(); 
             const utterance = new SpeechSynthesisUtterance(texto);
             utterance.lang = "pt-BR";
-            utterance.pitch = isDrunk ? 0.7 : 1.3; // Voz fica grossa/estranha se estiver bêbado
+            utterance.pitch = isDrunk ? 0.7 : 1.3; 
             utterance.rate = isDrunk ? 0.8 : 1.2; 
             speechSynthesis.speak(utterance);
         }
@@ -189,7 +184,6 @@
             const x = Math.random() * (canvas.width - size * 1.5) + (size / 2);
             let baseSpeed = (1.8 + (score * 0.02)) * currentDifficulty.velocidade;
             
-            // 5% de chance de vir Cachaça
             let isCachaca = Math.random() < 0.05;
 
             if (isCachaca) {
@@ -205,55 +199,54 @@
             items.push({ x, y: -40, size, speed, emoji, type });
         }
 
-        // --- CONTROLES DE TECLADO ---
+        // TECLADO (Ainda funciona se ele abrir no PC)
         document.addEventListener("keydown", (e) => {
             if (e.key === "ArrowRight") gaucho.dx = gaucho.speed;
             else if (e.key === "ArrowLeft") gaucho.dx = -gaucho.speed;
         });
-
         document.addEventListener("keyup", (e) => {
             if (e.key === "ArrowRight" || e.key === "ArrowLeft") gaucho.dx = 0;
         });
 
-        // --- CONTROLES DE MOUSE ---
-        function moveWithMouse(e) {
+        // OTIMIZAÇÃO MOUSE E TOUCH (CELULAR)
+        function moveWithPointer(clientX) {
             if (!gameRunning || gameOver) return;
             const rect = canvas.getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
             
-            // INVERSÃO DA CACHAÇA (MOUSE)
-            if (isDrunk) {
-                mouseX = canvas.width - mouseX;
-            }
+            // Calcula a proporção exata para funcionar mesmo se o CSS encolher a tela
+            const scaleX = canvas.width / rect.width;
+            let pointerX = (clientX - rect.left) * scaleX;
             
-            gaucho.x = mouseX - (gaucho.width / 2);
+            if (isDrunk) { pointerX = canvas.width - pointerX; }
             
+            gaucho.x = pointerX - (gaucho.width / 2);
             if (gaucho.x < 0) gaucho.x = 0;
             if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
         }
 
-        canvas.addEventListener("mousemove", moveWithMouse);
-        canvas.addEventListener("touchmove", (e) => {
+        canvas.addEventListener("mousemove", (e) => moveWithPointer(e.clientX));
+        
+        // touchstart: Pula para o dedo assim que encosta na tela
+        canvas.addEventListener("touchstart", (e) => {
             e.preventDefault(); 
-            moveWithMouse(e.touches[0]);
+            moveWithPointer(e.touches[0].clientX);
         }, { passive: false });
 
-        // --- LÓGICA DO JOGO ---
+        // touchmove: Arrasta o boneco acompanhando o dedo
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault(); 
+            moveWithPointer(e.touches[0].clientX);
+        }, { passive: false });
+
         function update() {
             if (!gameRunning || gameOver) return;
 
-            // INVERSÃO DA CACHAÇA (TECLADO)
-            if (isDrunk) {
-                gaucho.x += -gaucho.dx;
-            } else {
-                gaucho.x += gaucho.dx;
-            }
+            if (isDrunk) { gaucho.x += -gaucho.dx; } 
+            else { gaucho.x += gaucho.dx; }
 
-            // Limites da tela
             if (gaucho.x < 0) gaucho.x = 0;
             if (gaucho.x + gaucho.width > canvas.width) gaucho.x = canvas.width - gaucho.width;
 
-            // Timer da Cachaça
             if (isDrunk) {
                 drunkTimer--;
                 if (drunkTimer <= 0) {
@@ -288,14 +281,13 @@
                         speak(msg);
                     } 
                     else if (item.type === "cachaca") {
-                        // Ativa o Efeito Cachaça!
                         isDrunk = true;
-                        drunkTimer = 300; // Aprox 5 segundos a 60fps
+                        drunkTimer = 300; 
                         gameContainer.classList.add('drunk-effect');
                         addText(gaucho.x, gaucho.y, "BATEU A MARVADA!", "#9b59b6");
                         speak("Eita, bateu a cachaça!");
                     } 
-                    else { // Ruim
+                    else { 
                         lives -= 1;
                         livesEl.innerText = lives;
                         let msg = frasesRuins[Math.floor(Math.random() * frasesRuins.length)];
@@ -309,7 +301,6 @@
                 }
 
                 if (item.y - item.size > canvas.height) {
-                    // Não pune por deixar cachaça cair
                     if (item.type === "good") {
                         lives -= 1;
                         livesEl.innerText = lives;
@@ -339,8 +330,6 @@
                 gameRunning = false;
                 livesEl.innerText = "0";
                 speak("Fim de linha Gaúcho! Te pegaram!");
-                
-                // Exibe a tela de Fim de Jogo
                 finalScoreEl.innerText = score;
                 gameOverScreen.style.display = "flex";
             }
@@ -349,7 +338,6 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Desenhar Imagem
             if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) {
                 ctx.drawImage(gauchoImg, gaucho.x, gaucho.y, gaucho.width, gaucho.height);
             } else {
@@ -361,7 +349,6 @@
                 ctx.fillText("FOTO", gaucho.x + gaucho.width/2, gaucho.y + gaucho.height/2 - 5);
             }
 
-            // Desenhar Itens
             ctx.textAlign = "center";
             for (let item of items) {
                 ctx.font = "35px Arial";
@@ -369,7 +356,6 @@
                 ctx.fillText(item.emoji, item.x, item.y);
             }
 
-            // Textos Flutuantes
             ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             for (let ft of floatingTexts) {
@@ -388,7 +374,6 @@
             }
         }
 
-        // --- SISTEMA DE INÍCIO E RESET ---
         function startGame(dificuldade) {
             currentDifficulty = configFase[dificuldade];
             lives = currentDifficulty.vidas;
@@ -408,14 +393,12 @@
         }
 
         function resetToMenu() {
-            // Limpa as variáveis para começar do zero
             items.length = 0;
             floatingTexts.length = 0;
             isDrunk = false;
             gameContainer.classList.remove('drunk-effect');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Alterna as telas
             gameOverScreen.style.display = "none";
             startScreen.style.display = "flex";
         }
