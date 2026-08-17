@@ -154,7 +154,6 @@
     <h1>🤠 A Saga do Gaúcho 🏍️</h1>
     <p>Arraste na área escura. Faça sequências para ganhar vida!</p>
     
-    <!-- BARRA SUPERIOR (PONTOS E BOTÕES DE CONTROLE) -->
     <div class="top-bar">
         <div id="stats">
             Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span>
@@ -207,7 +206,6 @@
 
         let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId, frameCount = 0;
         
-        // --- SISTEMA DE PAUSA E HARDCORE ---
         let isPaused = false;
         let hardcoreAlerted = false;
 
@@ -241,16 +239,24 @@
             dificil: { vidas: 2, maxVidas: 4, chanceBom: 0.50, velocidade: 1.3 }
         };
 
+        // --- IMAGENS ---
         const gauchoImg = new Image();
         gauchoImg.src = "gaucho.png"; 
+
+        const vascoImg = new Image();
+        vascoImg.src = "vasco.png";
+
+        const flamengoImg = new Image();
+        flamengoImg.src = "flamengo.png";
 
         const gaucho = { x: 170, y: 430, width: 60, height: 60, speed: 7, dx: 0 };
         const items = [];
         const floatingTexts = [];
         const particles = []; 
         
-        const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤', '💰', '💵']; 
-        const badEmojis = ['🧔', '👨', '👮'];       
+        // Coloquei a palavra 'VASCO' e 'FLAMENGO' para identificarmos na hora de desenhar
+        const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤', '💰', '💵', 'VASCO']; 
+        const badEmojis = ['🧔', '👨', '👮', 'FLAMENGO'];       
 
         const zapMessages = [
             { name: "Esposa 😠", msg: "Onde você tá?? Chega em casa agora!" },
@@ -261,6 +267,9 @@
         const frasesAcerto = ["Isso aí!", "Agora sim!", "Boa!", "Aí sim Gaúcho!", "Garanhão!"];
         const frasesRuins = ["Ahh não moço!", "Tá com patifaria!", "Ih, o marido!", "A polícia!", "Deu ruim!"];
         const frasesCachaca = ["Essa tava gelada!", "Bebi demais!", "Eita marvada!", "Que viagem é essa?!"];
+        
+        const frasesVasco = ["Aqui é Vascão!", "Trem bala da colina!", "Vasco da Gama!"];
+        const frasesFlamengo = ["Urubu não!", "Ficou no cheirinho!", "Flamengo não!"];
 
         function speak(texto, forcar = false) {
             if (!forcar && speechSynthesis.speaking) return; 
@@ -281,6 +290,7 @@
             if (type === 'dinheiro') pEmoji = '💲';
             if (type === 'bad') pEmoji = '💥';  
             if (type === 'bebida') pEmoji = '✨';
+            if (type === 'vasco') pEmoji = '⚽';
 
             for (let i = 0; i < 4; i++) {
                 particles.push({
@@ -324,7 +334,6 @@
         function checkStreak() {
             if (streak >= 15) {
                 streak = 0; 
-                // Modo Hardcore (900pts+): Sequência dá pontos, não vidas.
                 if (score >= 900) {
                     score += 100;
                     scoreEl.innerText = score;
@@ -346,7 +355,6 @@
             
             let isHardcore = score >= 900;
 
-            // Vida extra só aparece se não estiver no Modo Sobrevivência
             if (!isHardcore && Math.random() < 0.02) {
                 items.push({ x, y: -40, size, speed: baseSpeed * 2.2, emoji: '❤️', type: 'vida' });
                 return;
@@ -361,7 +369,6 @@
                 return;
             }
 
-            // No Hardcore, chove muita coisa ruim!
             let chanceDeSerBom = isHardcore ? Math.min(currentDifficulty.chanceBom - 0.2, 0.4) : currentDifficulty.chanceBom;
             const isGood = Math.random() < chanceDeSerBom; 
             
@@ -372,7 +379,6 @@
             items.push({ x, y: -40, size, speed, emoji, type });
         }
 
-        // --- CONTROLES E PAUSA ---
         function togglePause() {
             if (!gameRunning || gameOver) return;
             isPaused = !isPaused;
@@ -428,9 +434,8 @@
 
             let isHardcore = score >= 900;
 
-            // Transição de Cores do Fundo e Aviso de Hardcore
             if (isHardcore) {
-                gameContainer.style.backgroundColor = "#4a0e0e"; // Fundo Vermelho Sangue
+                gameContainer.style.backgroundColor = "#4a0e0e"; 
                 if (!hardcoreAlerted) {
                     hardcoreAlerted = true;
                     speak("Modo Sobrevivência! Acabou a moleza!", true);
@@ -466,7 +471,7 @@
 
             frameCount++;
             let spawnRate = currentDifficulty === configFase.dificil ? 55 : 70;
-            if (isHardcore) spawnRate = 35; // Cai o dobro de coisas no Hardcore!
+            if (isHardcore) spawnRate = 35; 
             
             if (frameCount % spawnRate === 0) spawnItem();
 
@@ -502,10 +507,17 @@
                         let particleType = 'good';
                         if (item.emoji === '🏍️') particleType = 'moto';
                         if (item.emoji === '💰' || item.emoji === '💵') particleType = 'dinheiro';
+                        if (item.emoji === 'VASCO') particleType = 'vasco';
                         
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, particleType);
                         
-                        if(item.emoji === '🏍️') playSfx(sfxMoto);
+                        if (item.emoji === 'VASCO') {
+                            speak(frasesVasco[Math.floor(Math.random() * frasesVasco.length)], true);
+                            addText(gaucho.x, gaucho.y, "VASCÃO!", "#ffffff");
+                        }
+                        else if(item.emoji === '🏍️') {
+                            playSfx(sfxMoto);
+                        } 
                         else if (item.emoji === '🥤') {
                             playSfx(sfxGlup);
                             speak("Essa tava gelada!");
@@ -539,7 +551,13 @@
                         livesEl.innerText = lives;
                         createParticles(gaucho.x + gaucho.width/2, gaucho.y, 'bad');
                         playSfx(sfxTapa);
-                        speak(frasesRuins[Math.floor(Math.random() * frasesRuins.length)], true);
+
+                        if (item.emoji === 'FLAMENGO') {
+                            speak(frasesFlamengo[Math.floor(Math.random() * frasesFlamengo.length)], true);
+                            addText(gaucho.x, gaucho.y - 20, "CHEIRINHO!", "#e74c3c");
+                        } else {
+                            speak(frasesRuins[Math.floor(Math.random() * frasesRuins.length)], true);
+                        }
                     }
                     items.splice(i, 1);
                     i--;
@@ -619,9 +637,24 @@
 
             ctx.textAlign = "center";
             for (let item of items) {
-                ctx.font = "35px Arial";
-                ctx.fillStyle = "black"; 
-                ctx.fillText(item.emoji, item.x, item.y);
+                // VERIFICA SE É VASCO OU FLAMENGO PARA DESENHAR IMAGEM
+                if (item.emoji === 'VASCO') {
+                    if (vascoImg.complete && vascoImg.naturalWidth !== 0) {
+                        ctx.drawImage(vascoImg, item.x - 20, item.y - 35, 40, 40);
+                    } else { // Plano B se a imagem falhar
+                        ctx.font = "35px Arial"; ctx.fillStyle = "black"; ctx.fillText('⚓', item.x, item.y);
+                    }
+                } else if (item.emoji === 'FLAMENGO') {
+                    if (flamengoImg.complete && flamengoImg.naturalWidth !== 0) {
+                        ctx.drawImage(flamengoImg, item.x - 20, item.y - 35, 40, 40);
+                    } else { // Plano B se a imagem falhar
+                        ctx.font = "35px Arial"; ctx.fillStyle = "black"; ctx.fillText('🦅', item.x, item.y);
+                    }
+                } else {
+                    ctx.font = "35px Arial";
+                    ctx.fillStyle = "black"; 
+                    ctx.fillText(item.emoji, item.x, item.y);
+                }
             }
 
             for (let p of particles) {
@@ -649,7 +682,6 @@
             ctx.font = "bold 16px Arial";
             ctx.fillText("👆 ARRASTE O DEDO AQUI 👆", canvas.width / 2, groundY + 55);
 
-            // Overlay de Pausa
             if (isPaused) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
