@@ -254,9 +254,9 @@
         const floatingTexts = [];
         const particles = []; 
         
-        // Coloquei a palavra 'VASCO' e 'FLAMENGO' para identificarmos na hora de desenhar
-        const goodEmojis = ['👩', '👰', '🏍️', '💃', '💖', '🥤', '💰', '💵', 'VASCO']; 
-        const badEmojis = ['🧔', '👨', '👮', 'FLAMENGO'];       
+        // --- EMOJIS ---
+        const goodEmojis = ['👱‍♀️', '💃', '💋', '🏍️', '💖', '🥤', '💰', '💵', 'VASCO']; 
+        const badEmojis = ['🧔🏻‍♂️', '👨🏻‍🦰', '👮', 'FLAMENGO'];       
 
         const zapMessages = [
             { name: "Esposa 😠", msg: "Onde você tá?? Chega em casa agora!" },
@@ -637,17 +637,16 @@
 
             ctx.textAlign = "center";
             for (let item of items) {
-                // VERIFICA SE É VASCO OU FLAMENGO PARA DESENHAR IMAGEM
                 if (item.emoji === 'VASCO') {
                     if (vascoImg.complete && vascoImg.naturalWidth !== 0) {
                         ctx.drawImage(vascoImg, item.x - 20, item.y - 35, 40, 40);
-                    } else { // Plano B se a imagem falhar
+                    } else { 
                         ctx.font = "35px Arial"; ctx.fillStyle = "black"; ctx.fillText('⚓', item.x, item.y);
                     }
                 } else if (item.emoji === 'FLAMENGO') {
                     if (flamengoImg.complete && flamengoImg.naturalWidth !== 0) {
                         ctx.drawImage(flamengoImg, item.x - 20, item.y - 35, 40, 40);
-                    } else { // Plano B se a imagem falhar
+                    } else { 
                         ctx.font = "35px Arial"; ctx.fillStyle = "black"; ctx.fillText('🦅', item.x, item.y);
                     }
                 } else {
@@ -674,12 +673,14 @@
 
             ctx.restore();
 
+            // --- ZONA DE CONTROLE INFERIOR ---
             ctx.fillStyle = "#1a252f"; 
             ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(0, groundY, canvas.width, 4);
             ctx.fillStyle = "#ecf0f1";
             ctx.font = "bold 16px Arial";
+            ctx.textAlign = "center"; // Alinhamento corrigido aqui!
             ctx.fillText("👆 ARRASTE O DEDO AQUI 👆", canvas.width / 2, groundY + 55);
 
             if (isPaused) {
