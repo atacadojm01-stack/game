@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Saga do Gaúcho - O Labirinto</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #2c3e50; color: white; margin: 0; padding: 10px; overflow-x: hidden; }
+        h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 24px; margin-top: 5px; margin-bottom: 5px;}
+        p { margin-top: 0; font-size: 13px; color: #bdc3c7; margin-bottom: 10px;}
+        #game-wrapper { position: relative; display: inline-block; width: 100%; max-width: 380px; overflow: hidden; border-radius: 10px; }
+        #game-container { background-color: #1a252f; border: 6px solid #34495e; border-radius: 10px; box-shadow: 0px 8px 20px rgba(0,0,0,0.5); cursor: pointer; transition: filter 0.3s; touch-action: none; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 380px; margin: 0 auto 5px auto; padding: 0 5px; box-sizing: border-box; }
+        #stats { font-size: 18px; font-weight: bold; color: #ecf0f1; margin: 0; }
+        .btn-small { background-color: #34495e; color: white; border: 1px solid #2c3e50; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .btn-small:hover { background-color: #2c3e50; }
+        @keyframes cachaca-power { 0% { box-shadow: inset 0 0 20px #8e44ad; } 50% { box-shadow: inset 0 0 50px #9b59b6; border-color: #8e44ad; } 100% { box-shadow: inset 0 0 20px #8e44ad; } }
+        .power-effect { animation: cachaca-power 0.5s infinite !important; }
+        canvas { display: block; width: 100%; height: auto; border-radius: 5px; touch-action: none; }
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; flex-direction: column; border-radius: 10px; z-index: 100; }
+        #game-over-screen { display: none; }
+        .diff-btn { padding: 12px 20px; font-size: 16px; font-weight: bold; color: white; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 6px; width: 80%; max-width: 250px; }
+        .btn-easy { background-color: #2ecc71; } .btn-normal { background-color: #f1c40f; color: #333; } .btn-hard { background-color: #e74c3c; } .btn-menu { background-color: #3498db; margin-top: 20px;}
+        .title-start { margin-bottom: 5px; color: #f1c40f; font-size: 22px;}
+        .subtitle-start { font-size: 13px; margin-bottom: 20px; color: #bdc3c7; padding: 0 10px;}
+    </style>
+</head>
+<body>
+
+    <h1>🤠 Labirinto do Gaúcho 🍻</h1>
+    <p>Arraste o dedo para virar. Beba a Cachaça 🍹 para dar o troco neles!</p>
+    
+    <div class="top-bar">
+        <div id="stats">Pontos: <span id="score" style="color: #2ecc71;">0</span> | Vidas: <span id="lives" style="color: #e74c3c;">0</span></div>
+        <div id="ingame-controls" style="display: none;">
+            <button class="btn-small" onclick="togglePause()" id="pause-btn" title="Pausar">⏸️</button>
+            <button class="btn-small" onclick="quitGame()" title="Sair do Jogo">❌</button>
+        </div>
+    </div>
+    
+    <div id="game-wrapper">
+        <div id="start-screen" class="overlay-screen">
+            <h2 class="title-start">O Bar Tá Cheio!</h2>
+            <p class="subtitle-start">Fuga de labirinto! Arraste para os lados para guiar o Gaúcho.</p>
+            <button class="diff-btn btn-easy" onclick="startGame('facil')">FÁCIL</button>
+            <button class="diff-btn btn-normal" onclick="startGame('normal')">MÉDIO</button>
+            <button class="diff-btn btn-hard" onclick="startGame('dificil')">DIFÍCIL</button>
+            <button class="diff-btn btn-menu" style="margin-top: 30px;" onclick="window.location.href='index.html'">⬅️ Voltar ao Menu Principal</button>
+        </div>
+
+        <div id="game-over-screen" class="overlay-screen">
+            <h2 style="color: #e74c3c; font-size: 32px; margin-bottom: 5px;">SEM SAÍDA!</h2>
+            <p style="font-size: 18px; color: #ecf0f1;">Te encurralaram!</p>
+            <h3 style="color: #f1c40f; font-size: 24px;">Pontuação: <span id="final-score">0</span></h3>
+            <button class="diff-btn btn-menu" onclick="window.location.reload()">🔄 Tentar Novamente</button>
+            <button class="diff-btn btn-easy" style="background-color: #34495e;" onclick="window.location.href='index.html'">⬅️ Menu Principal</button>
+        </div>
+
+        <div id="game-container">
+            <canvas id="gameCanvas" width="360" height="360"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas"); const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score"); const livesEl = document.getElementById("lives");
+        const startScreen = document.getElementById("start-screen"); const gameOverScreen = document.getElementById("game-over-screen");
+        const finalScoreEl = document.getElementById("final-score"); const gameContainer = document.getElementById("game-container");
+
+        let score = 0, lives = 0, gameOver = false, gameRunning = false, animationId; let isPaused = false;
+        const tileSize = 24; const rows = 15; const cols = 15;
+
+        const bgMusic = new Audio("musica.mp3"); bgMusic.loop = true; bgMusic.volume = 0.3; 
+        const sfxGlup = new Audio("glup.mp3"); const sfxTapa = new Audio("tapa.mp3");
+        
+        function playSfx(audioObj) { audioObj.currentTime = 0; audioObj.play().catch(e => e); }
+
+        function speak(texto, forcar = false) {
+            if (!forcar && speechSynthesis.speaking) return; 
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = "pt-BR"; utterance.pitch = 1.3; utterance.rate = 1.2; speechSynthesis.speak(utterance);
+        }
+
+        let currentDifficulty = {};
+        const configFase = { facil: { vidas: 5, ghostSpeedMod: 3 }, normal: { vidas: 3, ghostSpeedMod: 2 }, dificil: { vidas: 1, ghostSpeedMod: 1 } };
+
+        const gauchoImg = new Image(); gauchoImg.src = "gaucho.png"; 
+
+        const initialMap = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,0,0,0,0,0,1,0,0,0,0,0,2,1],
+            [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1],
+            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+            [1,1,1,0,1,1,1,4,1,1,1,0,1,1,1],
+            [3,3,3,0,1,4,4,4,4,4,1,0,3,3,3], 
+            [1,1,1,0,1,1,1,1,1,1,1,0,1,1,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,0,1,1,1,1,0,1],
+            [1,2,0,0,0,1,0,0,0,1,0,0,0,2,1],
+            [1,1,1,1,0,1,0,1,0,1,0,1,1,1,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        let map = []; let totalDots = 0;
+        let player = { x: 7*tileSize, y: 11*tileSize, dirX: 0, dirY: 0, nextDirX: 0, nextDirY: 0, speed: 2 };
+        let ghosts = []; let isInvincible = false; let invincibleTimer = 0; let frameCounter = 0;
+
+        function cloneMap() {
+            map = []; totalDots = 0;
+            for (let r = 0; r < rows; r++) {
+                let row = [];
+                for (let c = 0; c < cols; c++) {
+                    row.push(initialMap[r][c]); if (initialMap[r][c] === 0 || initialMap[r][c] === 2) totalDots++;
+                }
+                map.push(row);
+            }
+        }
+
+        function initEntities() {
+            player.x = 7 * tileSize; player.y = 11 * tileSize; player.dirX = 0; player.dirY = 0; player.nextDirX = 0; player.nextDirY = 0;
+            ghosts = [
+                { id: 1, x: 6*tileSize, y: 7*tileSize, dirX: 1, dirY: 0, emoji: '🧔🏻‍♂️', startX: 6, startY: 7 },
+                { id: 2, x: 7*tileSize, y: 7*tileSize, dirX: 0, dirY: -1, emoji: '👮', startX: 7, startY: 7 },
+                { id: 3, x: 8*tileSize, y: 7*tileSize, dirX: -1, dirY: 0, emoji: '🦅', startX: 8, startY: 7 }
+            ];
+        }
+
+        let startTouchX = 0, startTouchY = 0;
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); startTouchX = e.touches[0].clientX; startTouchY = e.touches[0].clientY; }, { passive: false });
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); }, { passive: false });
+        canvas.addEventListener('touchend', e => {
+            let endX = e.changedTouches[0].clientX; let endY = e.changedTouches[0].clientY;
+            let dx = endX - startTouchX; let dy = endY - startTouchY;
+            if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
+                if (Math.abs(dx) > Math.abs(dy)) { if (dx > 0) setNextDir(1, 0); else setNextDir(-1, 0); } 
+                else { if (dy > 0) setNextDir(0, 1); else setNextDir(0, -1); }
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (isPaused) return;
+            if (e.key === "ArrowUp") setNextDir(0, -1); else if (e.key === "ArrowDown") setNextDir(0, 1);
+            else if (e.key === "ArrowLeft") setNextDir(-1, 0); else if (e.key === "ArrowRight") setNextDir(1, 0);
+        });
+
+        function setNextDir(x, y) { player.nextDirX = x; player.nextDirY = y; }
+
+        function togglePause() {
+            if (!gameRunning || gameOver) return;
+            isPaused = !isPaused;
+            if (isPaused) { bgMusic.pause(); document.getElementById("pause-btn").innerText = "▶️"; } 
+            else { bgMusic.play().catch(e=>e); document.getElementById("pause-btn").innerText = "⏸️"; }
+        }
+
+        function quitGame() {
+            if(confirm("Tem certeza que deseja sair dessa zoeira e voltar ao menu principal?")) {
+                bgMusic.pause(); window.location.href = "index.html";
+            }
+        }
+
+        function update() {
+            if (!gameRunning || gameOver) return;
+            frameCounter++;
+
+            if (isInvincible) {
+                invincibleTimer--;
+                if (invincibleTimer <= 0) { isInvincible = false; gameContainer.classList.remove('power-effect'); speak("Acabou a energia!", true); }
+            }
+
+            if (player.x % tileSize === 0 && player.y % tileSize === 0) {
+                let gridX = player.x / tileSize; let gridY = player.y / tileSize;
+                if (gridX < 0) { gridX = cols - 1; player.x = gridX * tileSize; } else if (gridX >= cols) { gridX = 0; player.x = 0; }
+
+                if (map[gridY] && map[gridY][gridX] === 0) {
+                    map[gridY][gridX] = 3; score += 10; totalDots--; scoreEl.innerText = score;
+                } else if (map[gridY] && map[gridY][gridX] === 2) {
+                    map[gridY][gridX] = 3; score += 50; totalDots--; scoreEl.innerText = score;
+                    isInvincible = true; invincibleTimer = 350; gameContainer.classList.add('power-effect'); playSfx(sfxGlup); speak("Vem pro pau!", true);
+                }
+
+                if (totalDots === 0) { speak("Limpou o bar!", true); cloneMap(); initEntities(); return; }
+
+                let canTurn = false;
+                if (player.nextDirX !== 0 || player.nextDirY !== 0) {
+                    let nextTileX = gridX + player.nextDirX; let nextTileY = gridY + player.nextDirY;
+                    if (nextTileX >= 0 && nextTileX < cols && map[nextTileY] && map[nextTileY][nextTileX] !== 1) { player.dirX = player.nextDirX; player.dirY = player.nextDirY; canTurn = true; }
+                }
+
+                if (!canTurn && (player.dirX !== 0 || player.dirY !== 0)) {
+                    let nextTileX = gridX + player.dirX; let nextTileY = gridY + player.dirY;
+                    if (nextTileX >= 0 && nextTileX < cols && map[nextTileY] && map[nextTileY][nextTileX] === 1) { player.dirX = 0; player.dirY = 0; }
+                }
+            }
+
+            player.x += player.dirX * player.speed; player.y += player.dirY * player.speed;
+
+            let ghostMoveFrame = frameCounter % currentDifficulty.ghostSpeedMod === 0;
+            
+            for (let g of ghosts) {
+                if (ghostMoveFrame) {
+                    if (g.x % tileSize === 0 && g.y % tileSize === 0) {
+                        let gGridX = g.x / tileSize; let gGridY = g.y / tileSize;
+                        if (gGridX < 0) { gGridX = cols - 1; g.x = gGridX * tileSize; } else if (gGridX >= cols) { gGridX = 0; g.x = 0; }
+
+                        let validMoves = []; const dirs = [{x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1}];
+                        
+                        for (let d of dirs) {
+                            if (d.x === -g.dirX && d.y === -g.dirY) continue;
+                            let nx = gGridX + d.x; let ny = gGridY + d.y;
+                            if (nx >= 0 && nx < cols && map[ny] && map[ny][nx] !== 1) { validMoves.push(d); }
+                        }
+                        if (validMoves.length === 0) { validMoves.push({x: -g.dirX, y: -g.dirY}); }
+                        let move = validMoves[Math.floor(Math.random() * validMoves.length)]; g.dirX = move.x; g.dirY = move.y;
+                    }
+                    g.x += g.dirX * player.speed; g.y += g.dirY * player.speed;
+                }
+
+                let dist = Math.hypot((player.x + 12) - (g.x + 12), (player.y + 12) - (g.y + 12));
+                if (dist < 18) {
+                    if (isInvincible) {
+                        score += 100; scoreEl.innerText = score; playSfx(sfxTapa); speak("Toma!", true);
+                        g.x = g.startX * tileSize; g.y = g.startY * tileSize;
+                    } else {
+                        lives--; livesEl.innerText = lives; playSfx(sfxTapa); speak("Te pegaram!", true);
+                        if (lives <= 0) { checkGameOver(); } 
+                        else { isPaused = true; setTimeout(() => { initEntities(); isPaused = false; }, 1000); }
+                    }
+                }
+            }
+        }
+
+        function checkGameOver() {
+            gameOver = true; gameRunning = false; bgMusic.pause(); gameContainer.classList.remove('power-effect'); livesEl.innerText = "0";
+            speechSynthesis.cancel(); let forceSpeak = new SpeechSynthesisUtterance("Te encurralaram Gaúcho! Perdeu!"); forceSpeak.lang = "pt-BR"; speechSynthesis.speak(forceSpeak);
+            finalScoreEl.innerText = score; gameOverScreen.style.display = "flex"; document.getElementById("ingame-controls").style.display = "none";
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let tile = map[r][c]; let px = c * tileSize; let py = r * tileSize;
+                    if (tile === 1) { ctx.fillStyle = "#34495e"; ctx.fillRect(px, py, tileSize, tileSize); ctx.strokeStyle = "#2c3e50"; ctx.strokeRect(px, py, tileSize, tileSize); } 
+                    else if (tile === 0) { ctx.font = "14px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🍻', px + tileSize/2, py + tileSize/2); } 
+                    else if (tile === 2) { ctx.font = "20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; let scale = 1 + Math.sin(frameCounter * 0.1) * 0.2; ctx.save(); ctx.translate(px + tileSize/2, py + tileSize/2); ctx.scale(scale, scale); ctx.fillText('🍹', 0, 0); ctx.restore(); } 
+                    else if (tile === 4) { ctx.fillStyle = "rgba(231, 76, 60, 0.2)"; ctx.fillRect(px, py, tileSize, tileSize); }
+                }
+            }
+            ctx.font = "22px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            for (let g of ghosts) { let renderEmoji = isInvincible ? '😨' : g.emoji; ctx.fillText(renderEmoji, g.x + tileSize/2, g.y + tileSize/2); }
+
+            ctx.save(); ctx.translate(player.x + tileSize/2, player.y + tileSize/2);
+            if (player.dirX === -1) ctx.scale(-1, 1); 
+            if (gauchoImg.complete && gauchoImg.naturalWidth !== 0) { ctx.drawImage(gauchoImg, -tileSize/2 + 2, -tileSize/2 + 2, tileSize - 4, tileSize - 4); } 
+            else { ctx.fillText('🤠', 0, 0); }
+            ctx.restore();
+
+            if (isPaused && !gameOver) { ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "white"; ctx.font = "bold 30px Arial"; ctx.textAlign = "center"; ctx.fillText("PAUSADO", canvas.width / 2, canvas.height / 2); }
+        }
+
+        function loop() { if (!isPaused) update(); draw(); if (!gameOver && gameRunning) animationId = requestAnimationFrame(loop); }
+
+        function startGame(dificuldade) {
+            currentDifficulty = configFase[dificuldade]; lives = currentDifficulty.vidas; livesEl.innerText = lives; score = 0; scoreEl.innerText = score;
+            gameContainer.style.backgroundColor = "#1a252f"; 
+            startScreen.style.display = "none"; gameOverScreen.style.display = "none"; document.getElementById("ingame-controls").style.display = "block"; document.getElementById("pause-btn").innerText = "⏸️";
+            cloneMap(); initEntities(); 
+            gameRunning = true; gameOver = false; isPaused = false; bgMusic.currentTime = 0; bgMusic.play().catch(e=>e);
+            loop(); speechSynthesis.cancel(); speak("Limpa o bar, Gaúcho!", true);
+        }
+    </script>
+</body>
+</html>
