@@ -8,22 +8,33 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #2c3e50; color: white; margin: 0; padding: 10px; overflow-x: hidden; }
         h1 { color: #f1c40f; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 24px; margin-top: 5px; margin-bottom: 5px;}
         p { margin-top: 0; font-size: 13px; color: #bdc3c7; margin-bottom: 15px;}
+        
         #game-wrapper { position: relative; display: inline-block; width: 100%; max-width: 400px; overflow: hidden; border-radius: 10px; }
-        #game-container { background-color: #ecf0f1; border: 6px solid #34495e; border-radius: 10px; box-shadow: 0px 8px 20px rgba(0,0,0,0.5); cursor: pointer; transition: background-color 1.5s ease, filter 0.3s; touch-action: none; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 20px, transparent 20px, transparent 40px); }
+        #game-container { 
+            background-color: #ecf0f1; border: 6px solid #34495e; border-radius: 10px; 
+            box-shadow: 0px 8px 20px rgba(0,0,0,0.5); cursor: pointer; 
+            transition: background-color 1.5s ease, filter 0.3s; touch-action: none; 
+            background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 20px, transparent 20px, transparent 40px); 
+        }
+        
         .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 400px; margin: 0 auto 5px auto; padding: 0 5px; box-sizing: border-box; }
         #stats { font-size: 18px; font-weight: bold; color: #ecf0f1; margin: 0; }
         .btn-small { background-color: #34495e; color: white; border: 1px solid #2c3e50; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         .btn-small:hover { background-color: #2c3e50; }
+        
         @keyframes bebo { 0% { filter: blur(0px); } 50% { filter: blur(2px); border-color: #8e44ad; } 100% { filter: blur(0px); } }
         .drunk-effect { animation: bebo 2s infinite; }
         @keyframes giroflex-anim { 0% { box-shadow: inset 0 0 40px red; } 50% { box-shadow: inset 0 0 40px blue; } 100% { box-shadow: inset 0 0 40px red; } }
         .giroflex-effect { animation: giroflex-anim 0.5s infinite !important; }
+        
         #fake-notif { position: absolute; top: -100px; left: 5%; width: 90%; background-color: rgba(255, 255, 255, 0.95); color: #333; padding: 12px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 15px; transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 50; pointer-events: none; box-sizing: border-box; text-align: left; }
         #fake-notif.show { top: 15px; }
         #fake-notif .icon { font-size: 28px; }
         #fake-notif h4 { margin: 0; font-size: 15px; color: #25D366; }
         #fake-notif p { margin: 2px 0 0 0; font-size: 13px; color: #555; font-weight: bold;}
+        
         canvas { display: block; width: 100%; height: auto; border-radius: 5px; touch-action: none; }
+        
         .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; flex-direction: column; border-radius: 10px; z-index: 100; }
         #game-over-screen { display: none; }
         .diff-btn { padding: 12px 20px; font-size: 16px; font-weight: bold; color: white; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 6px; width: 80%; max-width: 250px; }
@@ -35,7 +46,7 @@
 <body>
 
     <h1>🏍️ Fuga de Moto 🤠</h1>
-    <p>Toque na tela para pular (Pode dar DUPLO PULO!).</p>
+    <p>Toque na área inferior para PULAR. Deslize para baixo para CAIR RÁPIDO!</p>
     
     <div class="top-bar">
         <div id="stats">Distância: <span id="score" style="color: #2ecc71;">0</span>m | Vidas: <span id="lives" style="color: #e74c3c;">0</span></div>
@@ -56,7 +67,7 @@
 
         <div id="start-screen" class="overlay-screen">
             <h2 class="title-start">Preparado para a fuga?</h2>
-            <p class="subtitle-start">Toque para pular os maridos e pegue as coisas no ar!</p>
+            <p class="subtitle-start">Toque na tela para pular! Cuidado com os inimigos rasteiros.</p>
             <button class="diff-btn btn-easy" onclick="startGame('facil')">FÁCIL</button>
             <button class="diff-btn btn-normal" onclick="startGame('normal')">MÉDIO</button>
             <button class="diff-btn btn-hard" onclick="startGame('dificil')">DIFÍCIL</button>
@@ -72,7 +83,8 @@
         </div>
 
         <div id="game-container">
-            <canvas id="gameCanvas" width="600" height="400"></canvas>
+            <!-- Aumentei a tela para comportar a zona de controle embaixo -->
+            <canvas id="gameCanvas" width="600" height="600"></canvas>
         </div>
     </div>
 
@@ -93,7 +105,7 @@
         let isFlipped = false, flipTimer = 0;
         let currentRotation = 0, targetRotation = 0; 
         
-        const groundY = 320; 
+        const groundY = 400; // Altura do chão. O jogo vai de 0 a 440. A tela de toque vai de 440 a 600.
 
         const bgMusic = new Audio("musica.mp3"); bgMusic.loop = true; bgMusic.volume = 0.3; 
         const sfxMoto = new Audio("moto.mp3"); const sfxTapa = new Audio("tapa.mp3");
@@ -157,8 +169,11 @@
         }
 
         function addLife() {
-            if (lives < currentDifficulty.maxVidas) { lives++; livesEl.innerText = lives; addText(gaucho.x, gaucho.y - 40, "+1 VIDA!", "#e74c3c"); } 
-            else { score += 50; scoreEl.innerText = score; addText(gaucho.x, gaucho.y - 40, "+50m!", "#f1c40f"); }
+            if (lives < currentDifficulty.maxVidas) {
+                lives++; livesEl.innerText = lives; addText(gaucho.x, gaucho.y - 40, "+1 VIDA!", "#e74c3c");
+            } else {
+                score += 50; scoreEl.innerText = score; addText(gaucho.x, gaucho.y - 40, "+50m!", "#f1c40f");
+            }
         }
 
         function spawnEntity() {
@@ -176,15 +191,22 @@
             else {
                 let chanceDeSerBom = isHardcore ? Math.min(currentDifficulty.chanceBom - 0.2, 0.4) : currentDifficulty.chanceBom;
                 let isGood = Math.random() < chanceDeSerBom; 
+                
                 if (isGood) {
-                    type = "good"; emoji = flyingGood[Math.floor(Math.random() * (flyingGood.length - 3))]; posY = groundY - 90 - (Math.random() * 80);
+                    type = "good"; 
+                    emoji = flyingGood[Math.floor(Math.random() * (flyingGood.length - 3))]; 
+                    posY = groundY - 90 - (Math.random() * 80); 
                 } else {
-                    type = "bad"; emoji = groundBad[Math.floor(Math.random() * badEmojis.length)]; posY = groundY - 20;
+                    type = "bad"; 
+                    // 🔴 O BUG ESTAVA AQUI EMBAIXO! 🔴
+                    emoji = groundBad[Math.floor(Math.random() * groundBad.length)]; 
+                    posY = groundY - 20; 
                 }
             }
             entities.push({ x: canvas.width + 50, y: posY, size, speed, emoji, type });
         }
 
+        // --- CONTROLES DE PULO E DESLIZE RÁPIDO ---
         function performJump() {
             if (!gameRunning || gameOver || isPaused) return;
             if (gaucho.jumps < gaucho.maxJumps) {
@@ -192,9 +214,32 @@
             }
         }
 
+        let touchStartY = 0;
+        canvas.addEventListener("touchstart", (e) => { 
+            e.preventDefault(); 
+            touchStartY = e.touches[0].clientY;
+            performJump(); // Sempre que tocar, ele pula
+        }, { passive: false });
+
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (!gameRunning || gameOver || isPaused) return;
+            let touchCurrentY = e.touches[0].clientY;
+            
+            // Se o dedo deslizou para BAIXO rapidamente
+            if (touchCurrentY - touchStartY > 30) {
+                if (gaucho.vy < 0) gaucho.vy = 0; // Corta o impulso do pulo
+                gaucho.vy += 2.5; // Faz a moto cair pesado
+            }
+        }, { passive: false });
+
+        // Backup para teclado / Mouse no PC
         canvas.addEventListener("mousedown", performJump);
-        canvas.addEventListener("touchstart", (e) => { e.preventDefault(); performJump(); }, { passive: false });
-        document.addEventListener("keydown", (e) => { if (isPaused) return; if (e.code === "Space" || e.key === "ArrowUp") performJump(); });
+        document.addEventListener("keydown", (e) => { 
+            if (isPaused) return; 
+            if (e.code === "Space" || e.key === "ArrowUp") performJump(); 
+            if (e.key === "ArrowDown") { if (gaucho.vy < 0) gaucho.vy = 0; gaucho.vy += 2.5; }
+        });
 
         function togglePause() {
             if (!gameRunning || gameOver) return;
@@ -211,11 +256,15 @@
 
         function update() {
             if (!gameRunning || gameOver) return;
+
             let isHardcore = score >= 2000;
 
             if (isHardcore) {
                 gameContainer.style.backgroundColor = "#4a0e0e"; 
-                if (!hardcoreAlerted) { hardcoreAlerted = true; speak("Fuga Impossível! Acabou a moleza!", true); addText(canvas.width/2, 100, "MODO FUGA EXTREMA!", "#e74c3c"); }
+                if (!hardcoreAlerted) {
+                    hardcoreAlerted = true; speak("Fuga Impossível! Acabou a moleza!", true);
+                    addText(canvas.width/2, 100, "MODO FUGA EXTREMA!", "#e74c3c");
+                }
             } else {
                 let phase = Math.floor(score / 500);
                 if (phase === 0) gameContainer.style.backgroundColor = "#ecf0f1"; 
@@ -235,13 +284,17 @@
 
             let spawnRate = currentDifficulty === configFase.dificil ? 60 : 80;
             if (isHardcore) spawnRate = 45; 
+            
             if (frameCount % spawnRate === 0) spawnEntity();
 
             if (Math.random() < 0.001) triggerFakeNotification();
 
             let temPolicia = entities.some(i => i.emoji === '👮');
-            if (temPolicia && !gameContainer.classList.contains('giroflex-effect')) { gameContainer.classList.add('giroflex-effect'); playSfx(sfxSirene); } 
-            else if (!temPolicia) { gameContainer.classList.remove('giroflex-effect'); }
+            if (temPolicia && !gameContainer.classList.contains('giroflex-effect')) {
+                gameContainer.classList.add('giroflex-effect'); playSfx(sfxSirene);
+            } else if (!temPolicia) {
+                gameContainer.classList.remove('giroflex-effect');
+            }
 
             bgOffset -= 5;
 
@@ -252,8 +305,11 @@
                 if (hitGaucho) {
                     if (ent.type === "good") {
                         score += 50; scoreEl.innerText = score;
-                        let pType = 'good'; if (ent.emoji === '💰' || ent.emoji === '💵') pType = 'dinheiro'; if (ent.emoji === 'VASCO') pType = 'vasco';
+                        let pType = 'good';
+                        if (ent.emoji === '💰' || ent.emoji === '💵') pType = 'dinheiro';
+                        if (ent.emoji === 'VASCO') pType = 'vasco';
                         createParticles(ent.x, ent.y, pType);
+                        
                         if (ent.emoji === 'VASCO') { speak(frasesVasco[Math.floor(Math.random() * frasesVasco.length)], true); addText(gaucho.x + 50, gaucho.y, "VASCÃO!", "#ffffff"); } 
                         else if (ent.emoji === '🥤') { playSfx(sfxGlup); speak("Essa tava gelada!"); } 
                         else { speak(frasesAcerto[Math.floor(Math.random() * frasesAcerto.length)]); }
@@ -263,14 +319,18 @@
                     else if (ent.type === "flip") { isFlipped = true; flipTimer = 120; createParticles(ent.x, ent.y, 'bebida'); playSfx(sfxGlup); speak("Que viagem é essa?!", true); }
                     else { 
                         lives -= 1; livesEl.innerText = lives; createParticles(gaucho.x + gaucho.width/2, gaucho.y + 20, 'bad'); playSfx(sfxTapa);
+
                         if (ent.emoji === 'FLAMENGO') { speak(frasesFlamengo[Math.floor(Math.random() * frasesFlamengo.length)], true); addText(gaucho.x + 40, gaucho.y, "CHEIRINHO!", "#e74c3c"); } 
                         else { speak(frasesRuins[Math.floor(Math.random() * frasesRuins.length)], true); }
+                        
                         ent.x -= 50; 
                     }
                     entities.splice(i, 1); i--; checkGameOver(); continue;
                 }
+
                 if (ent.x + ent.size < 0) { entities.splice(i, 1); i--; }
             }
+
             for (let i = 0; i < floatingTexts.length; i++) { floatingTexts[i].y -= 1; floatingTexts[i].life -= 1; if (floatingTexts[i].life <= 0) { floatingTexts.splice(i, 1); i--; } }
             for (let i = 0; i < particles.length; i++) { particles[i].x += particles[i].vx; particles[i].y += particles[i].vy; particles[i].life -= 1; if (particles[i].life <= 0) { particles.splice(i, 1); i--; } }
         }
@@ -286,8 +346,18 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save();
-            if (Math.abs(currentRotation) > 0.01) { ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(currentRotation); ctx.translate(-canvas.width / 2, -canvas.height / 2); }
-            ctx.fillStyle = "#1a252f"; ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY); ctx.fillStyle = "#f1c40f";
+            
+            // Área de jogo: Restringir tudo acima da zona de controle (GroundY + 40 de folga)
+            ctx.beginPath();
+            ctx.rect(0, 0, canvas.width, groundY + 40);
+            ctx.clip();
+
+            if (Math.abs(currentRotation) > 0.01) { ctx.translate(canvas.width / 2, groundY / 2); ctx.rotate(currentRotation); ctx.translate(-canvas.width / 2, -groundY / 2); }
+            
+            // Fundo escuro acima do chão
+            ctx.fillStyle = "#1a252f"; ctx.fillRect(0, groundY, canvas.width, canvas.height); 
+            ctx.fillStyle = "#f1c40f";
+            
             for(let i = 0; i < 20; i++) { let dashX = ((i * 60) + bgOffset) % (canvas.width + 60); if (dashX < -60) dashX += canvas.width + 60; ctx.fillRect(dashX, groundY + 30, 30, 8); }
             ctx.fillStyle = "#e74c3c"; ctx.fillRect(0, groundY, canvas.width, 4);
 
@@ -307,10 +377,17 @@
 
             for (let p of particles) { ctx.font = "20px Arial"; ctx.globalAlpha = p.life / p.maxLife; ctx.fillText(p.emoji, p.x, p.y); ctx.globalAlpha = 1.0; }
             ctx.font = "bold 20px Arial"; for (let ft of floatingTexts) { ctx.fillStyle = ft.color; ctx.globalAlpha = ft.life / 60; ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0; }
+            
             ctx.restore();
 
-            ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
-            ctx.fillStyle = "#ecf0f1"; ctx.font = "bold 16px Arial"; ctx.textAlign = "center"; ctx.fillText("👆 TOQUE NA TELA PARA PULAR 👆", canvas.width / 2, canvas.height - 15);
+            // --- ZONA DE CONTROLE (Independente do Giro) ---
+            ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, groundY + 40, canvas.width, canvas.height - (groundY + 40));
+            ctx.fillStyle = "#f1c40f"; ctx.fillRect(0, groundY + 40, canvas.width, 4);
+            
+            ctx.fillStyle = "#ecf0f1"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; 
+            ctx.fillText("👆 TOQUE PARA PULAR", canvas.width / 2, groundY + 90);
+            ctx.fillStyle = "#bdc3c7"; ctx.font = "16px Arial";
+            ctx.fillText("👇 DESLIZE PARA CAIR RÁPIDO", canvas.width / 2, groundY + 120);
 
             if (isPaused) { ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "white"; ctx.font = "bold 40px Arial"; ctx.textAlign = "center"; ctx.fillText("PAUSADO", canvas.width / 2, canvas.height / 2 - 20); ctx.font = "16px Arial"; ctx.fillText("Aperte o Play lá em cima para voltar.", canvas.width / 2, canvas.height / 2 + 20); }
         }
